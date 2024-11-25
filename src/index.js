@@ -6,7 +6,6 @@ const app = express();
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 //const cookieParser = require('cookie-parser');
-const { MongoClient, ServerApiVersion } = require("mongodb");
 const cors = require("cors");
 
 dotenv.config();
@@ -41,49 +40,23 @@ app.get("/", (req, res) => {
 
 routes(app);
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-let client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
+app.use(bodyParser.json());
+
+app.get('/', (req, res) => {
+  res.send('Hello world!');
 });
 
-async function run() {
-  try {
-    // Khởi tạo kết nối MongoDB
-    client = new MongoClient(uri, {
-      serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-      },
+routes(app);
+
+mongoose.connect(uri)
+  .then(() => {
+    console.log('Mongoose connected to MongoDB');
+    // Now, you can safely start your server and perform database operations
+    app.listen(port, () => {
+      console.log(`App listening on port ${port}`);
     });
-    await client.connect();
+  })
+  .catch(err => {
+    console.error('Mongoose connection error:', err);
+  });
 
-    // Kiểm tra kết nối
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } catch (err) {
-    console.error("Failed to connect to MongoDB", err);
-  }
-}
-
-// Gọi hàm run
-run();
-
-// Xử lý sự kiện khi tắt ứng dụng
-process.on("SIGINT", async () => {
-  console.log("Closing MongoDB connection...");
-  if (client) await client.close();
-  console.log("MongoDB connection closed.");
-  process.exit(0); // Thoát ứng dụng
-});
-
-// Khởi động server
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
