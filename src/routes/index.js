@@ -1,7 +1,7 @@
-const UserRouter = require('./UserRouter')
+const paymentRoutes = require("./PaymentRoutes");
 
 const routes = (app) => {
-    app.use('/', UserRouter)
+  app.use("/api/payment", paymentRoutes);
 };
 
 module.exports = routes;
