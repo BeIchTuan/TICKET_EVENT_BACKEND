@@ -26,7 +26,7 @@ const createUser = (newUser) => {
       if (checkUser !== null) {
         resolve({
           status: "error",
-          message: "The email already exists",
+          message: "The email and role already exists",
         });
       }
 
@@ -87,39 +87,13 @@ const loginUser = (userLogin) => {
         });
       }
 
-      // const access_token = await generalAccessToken({
-      //   id: checkUser.id,
-      //   role: checkUser.role
-      // })
-
-      // const refresh_token = await generalRefreshToken({
-      //   id: checkUser.id,
-      //   role: checkUser.role
-      // })
-
-      // resolve({
-      //   status: "success",
-      //   message: "Login successful",
-      //   access_token: access_token,
-      //   refresh_token: refresh_token
-      // });
-
       const access_token = await generalAccessToken({
         id: checkUser.id,
         role: checkUser.role,
       });
 
-      //console.log('service', access_token)
-
-      // Trường hợp nếu người dùng có vai trò là seller
-      let shopInfo = {};
-      if (checkUser.role === "seller") {
-        shopInfo = {
-          shopName: checkUser.shopName,
-          shopDescription: checkUser.shopDescription,
-          shopAddress: checkUser.shopAddress,
-        };
-      }
+      checkUser.accessToken = access_token;
+      await checkUser.save();
 
       resolve({
         status: "success",
@@ -131,9 +105,7 @@ const loginUser = (userLogin) => {
         birthday: checkUser.birthday,
         gender: checkUser.gender,
         phone: checkUser.phone,
-        address: checkUser.address,
         access_token: access_token,
-        ...shopInfo, // Thêm thông tin cửa hàng nếu có
       });
     } catch (e) {
       reject(e);

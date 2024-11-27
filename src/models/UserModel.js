@@ -3,14 +3,14 @@ const Schema = mongoose.Schema;
 
 const userSchema = new Schema(
   {
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true },
     password: { type: String, required: true },
     name: { type: String },
     avatar: { type: String },
     university: { type: Schema.Types.ObjectId, ref: "University" },
     faculty: { type: Schema.Types.ObjectId, ref: "Faculty" },
     major: { type: Schema.Types.ObjectId, ref: "Major" },
-    studentId: { type: String, unique: true },
+    studentId: { type: String},
     birthday: { type: Date },
     gender: { type: String, enum: ["male", "female", "other"] },
     phone: { type: String },
@@ -21,6 +21,8 @@ const userSchema = new Schema(
     },
     //eventsCreated: [{type: Schema.Types.ObjectId, ref: "Event"}],
     //ticketsBought: [{type: Schema.Types.ObjectId, ref: "Ticket"}],
+    isDeleted: {type: Boolean, default: false},
+    accessToken: { type: String },
   },
   { collection: "user" }
 );

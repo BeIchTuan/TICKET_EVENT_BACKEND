@@ -50,7 +50,7 @@ const createUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password} = req.body;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isEmail = emailRegex.test(email);
 
@@ -68,46 +68,24 @@ const loginUser = async (req, res) => {
 
     const response = await UserService.loginUser(req.body);
 
-    if (response.status === "success") {
-      res.cookie("accessToken", response.access_token, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "None",
-        maxAge: 86400000, // 24 hour
-      });
+    // Chuẩn bị thông tin phản hồi cho người dùng
+    const userData = {
+      id: response.userId,
+      email: email,
+      role: response.role,
+      name: response.name,
+      avatar: response.avatar,
+      birthday: response.birthday,
+      gender: response.gender,
+      phone: response.phone,
+    };
 
-      // Chuẩn bị thông tin phản hồi cho người dùng
-      const userData = {
-        id: response.userId,
-        email: email,
-        role: response.role,
-        name: response.name,
-        avatar: response.avatar,
-        birthday: response.birthday,
-        gender: response.gender,
-        phone: response.phone,
-        address: response.address,
-      };
-
-      // Nếu role là seller, thêm thông tin cửa hàng vào phản hồi
-      if (response.role === "seller") {
-        userData.shopName = response.shopName;
-        userData.shopDescription = response.shopDescription;
-        userData.shopAddress = response.shopAddress;
-      }
-
-      return res.status(200).json({
-        status: "success",
-        message: "Login successful",
-        token: response.access_token,
-        user: userData,
-      });
-    } else {
-      return res.status(401).json({
-        status: "error",
-        message: response.message,
-      });
-    }
+    return res.status(200).json({
+      status: "success",
+      message: "Login successful",
+      token: response.access_token,
+      user: userData,
+    });
   } catch (e) {
     return res.status(500).json({
       message: "Internal server error",
