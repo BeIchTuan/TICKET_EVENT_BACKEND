@@ -36,19 +36,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-app.get("/", (req, res) => {
-  res.send("Hello world!");
-});
-
 routes(app);
-
-app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
   res.send('Hello world!');
 });
-
-routes(app);
 
 mongoose.connect(uri)
   .then(() => {

@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
 // Major Schema
-const MajorSchema = new mongoose.Schema(
+const MajorSchema = new Schema(
   {
     name: { type: String, required: true },
     isDeleted: { type: Boolean, default: false },
@@ -9,4 +10,6 @@ const MajorSchema = new mongoose.Schema(
   { collection: "major" }
 );
 
-module.exports = mongoose.model("Major", MajorSchema);
+const Major = mongoose.model("Major", MajorSchema);
+
+module.exports = Major;
