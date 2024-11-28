@@ -74,9 +74,6 @@ class AuthController {
         role: response.role,
         name: response.name,
         avatar: response.avatar,
-        birthday: response.birthday,
-        gender: response.gender,
-        phone: response.phone,
       };
 
       return res.status(200).json({

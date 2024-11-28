@@ -42,10 +42,16 @@ class AuthService {
       };
 
       const createdUser = await User.create(userData);
+      
+      const populatedUser = await User.findById(createdUser._id)
+        .populate("university", "name")
+        .populate("faculty", "name")
+        .populate("major", "name");
+
       return {
         status: "success",
         message: "User registered successfully",
-        data: createdUser,
+        data: populatedUser,
       };
     } catch (error) {
       throw new Error(error.message);
@@ -88,9 +94,6 @@ class AuthService {
         role: user.role,
         name: user.name,
         avatar: user.avatar,
-        birthday: user.birthday,
-        gender: user.gender,
-        phone: user.phone,
         access_token: accessToken,
       };
     } catch (error) {
