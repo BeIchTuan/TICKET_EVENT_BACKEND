@@ -1,16 +1,19 @@
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
-
+const User = require('../models/UserModel')
 dotenv.config();
 
-// Middleware xác thực và phân quyền
+//Middleware xác thực và phân quyền
 const authMiddleware = (allowedRoles = []) => {
   return async (req, res, next) => {
     let accessToken = req.headers['authorization'];
+    console.log("Authorization Header:", accessToken);
 
     if (accessToken && accessToken.startsWith("Bearer ")) {
       accessToken = accessToken.slice(7); // Loại bỏ "Bearer " khỏi token
     }
+
+    console.log("Processed Token:", accessToken);
 
     if (!accessToken) {
       return res.status(401).json({ error: "Please Login First" });

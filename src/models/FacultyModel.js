@@ -1,9 +1,16 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
 // Faculty Schema
-const FacultySchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  majors: [{ type: String, ref: "Major" }] 
-});
+const FacultySchema = new Schema(
+  {
+    name: { type: String, required: true },
+    majors: [{ type: String, ref: "Major" }],
+    isDeleted: { type: Boolean, default: false },
+  },
+  { collection: "faculty" }
+);
 
-module.exports = mongoose.model("Faculty", FacultySchema);
+const Faculty = mongoose.model("Faculty", FacultySchema);
+
+module.exports = Faculty;  
