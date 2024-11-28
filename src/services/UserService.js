@@ -107,14 +107,15 @@ class UserService {
     }
   }
 
-  async getUsers(query) {
-    const filter = {query};
+  async getUsers({ role }) {
     try {
-      const users = await User.find()
+      const filter = role ? { role } : {};
+  
+      const users = await User.find(filter)
         .populate("university", "name")
         .populate("faculty", "name")
         .populate("major", "name");
-
+  
       return users.map((user) => ({
         _id: user._id,
         email: user.email,
@@ -132,6 +133,26 @@ class UserService {
       throw new Error(error.message);
     }
   }
+
+  async searchUsers({ email, name, phone }) {
+    try {
+      const filter = {};
+      if (email) filter.email = email; 
+      if (phone) filter.phone = phone; 
+      if (name) filter.name = { $regex: name, $options: "i" }; 
+  
+      const users = await User.find(filter); 
+  
+      return users.map((user) => ({
+        _id: user._id,
+        name: user.name,
+        avatar: user.avatar || null,
+        studentId: user.studentId || null,
+      }));
+    } catch (error) {
+      throw new Error(error.message); // Ném lỗi để controller xử lý
+    }
+  } 
 }
 
 module.exports = new UserService();

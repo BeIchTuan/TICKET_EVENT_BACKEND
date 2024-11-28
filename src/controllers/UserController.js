@@ -102,15 +102,27 @@ class UserController {
   }
 
   async getUsers(req, res) {
-    const role = req.query
+    const { role } = req.query; 
     try {
-      const users = await UserService.getUsers(req.query);
+      const users = await UserService.getUsers({ role });
       res.status(200).json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
+
+  async searchUsers(req, res) {
+    const { email, name, phone } = req.query; 
+    try {
+      const users = await UserService.searchUsers({ email, name, phone });
+      res.status(200).json(users); 
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+  
 }
 
 module.exports = new UserController();
