@@ -9,12 +9,22 @@ class TicketController {
       const result = await TicketService.bookTicket(eventId, buyerId);
       
       res.status(201).json({
-        message: "Ticket booked successfully.",
-        bookingCode: result.bookingCode,
-        qrCode: result.qrCode
+        status: "success",
+        message: "Ticket booked successfully",
+        data: {
+          _id: result._id,
+          eventId: result.eventId,
+          buyerId: result.buyerId,
+          bookingCode: result.bookingCode,
+          qrCode: result.qrCode,
+          status: result.status,
+          createdAt: result.createdAt,
+          updatedAt: result.updatedAt
+        }
       });
     } catch (error) {
       res.status(500).json({
+        status: "error",
         message: error.message
       });
     }
@@ -81,6 +91,28 @@ class TicketController {
 
       res.status(200).json({
         message: "Ticket transfer rejected."
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: error.message
+      });
+    }
+  }
+
+  static async checkIn(req, res) {
+    try {
+      const { qrCode } = req.body;
+      
+      if (!qrCode) {
+        return res.status(400).json({
+          message: "QR code is required"
+        });
+      }
+
+      await TicketService.checkInByQR(qrCode);
+      
+      res.status(200).json({
+        message: "Check-in successful."
       });
     } catch (error) {
       res.status(500).json({

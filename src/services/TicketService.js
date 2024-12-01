@@ -1,8 +1,8 @@
 const Ticket = require('../models/TicketModel');
+const TransferTicket = require('../models/TransferTicketModel');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const TransferTicket = require('../models/TransferTicketModel');
 
 class TicketService {
   static generateBookingCode() {
@@ -80,10 +80,10 @@ class TicketService {
       
       if (!ticket) throw new Error('Ticket not found or not available for transfer');
 
-      const transfer = new TicketTransfer({
-        ticketId,
-        fromUserId,
-        toUserId,
+      const transfer = new TransferTicket({
+        ticket: ticketId,
+        fromUser: fromUserId,
+        toUser: toUserId,
         status: 'pending'
       });
 
@@ -99,9 +99,9 @@ class TicketService {
     session.startTransaction();
 
     try {
-      const transfer = await TicketTransfer.findOne({
-        ticketId,
-        toUserId,
+      const transfer = await TransferTicket.findOne({
+        ticket: ticketId,
+        toUser: toUserId,
         status: 'pending'
       });
 
@@ -115,7 +115,7 @@ class TicketService {
       await ticket.save({ session });
 
       // Cập nhật trạng thái chuyển
-      transfer.status = 'accepted';
+      transfer.status = 'success';
       await transfer.save({ session });
 
       await session.commitTransaction();
@@ -130,7 +130,7 @@ class TicketService {
 
   static async rejectTransfer(ticketId, toUserId) {
     try {
-      const transfer = await TicketTransfer.findOne({
+      const transfer = await TransferTicket.findOne({
         ticketId,
         toUserId,
         status: 'pending'
@@ -138,9 +138,34 @@ class TicketService {
 
       if (!transfer) throw new Error('Transfer request not found');
 
-      transfer.status = 'rejected';
+      transfer.status = 'cancelled';
       await transfer.save();
       return transfer;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async checkInByQR(qrCode) {
+    try {
+      const ticket = await Ticket.findOne({ qrCode });
+      
+      if (!ticket) {
+        throw new Error('Invalid QR code or ticket not found');
+      }
+
+      if (ticket.status === 'cancelled') {
+        throw new Error('This ticket has been cancelled');
+      }
+
+      if (ticket.status === 'checked-in') {
+        throw new Error('This ticket has already been checked in');
+      }
+
+      ticket.status = 'checked-in';
+      await ticket.save();
+
+      return ticket;
     } catch (error) {
       throw error;
     }

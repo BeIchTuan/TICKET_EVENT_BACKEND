@@ -28,4 +28,9 @@ router.post('/:ticketId/reject',
   TicketController.rejectTransfer
 );
 
+router.post('/check-in', 
+  authMiddleware(['event_creator']), 
+  TicketController.checkIn
+);
+
 module.exports = router;

@@ -34,7 +34,7 @@ const ticketSchema = new Schema({
   }
 }, {
   timestamps: true, // Tự động thêm createdAt và updatedAt
-  collection: 'tickets'
+  collection: 'ticket'
 });
 
 // Tạo index cho các trường thường được tìm kiếm
