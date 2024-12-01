@@ -59,6 +59,27 @@ class UniversityController {
       res.status(500).json({ message: "Error deleting university", error });
     }
   }
+
+  //Get university's faculties
+  async getFacultiesByUniversity(req, res) {
+    try {
+      const { universityId } = req.params;
+      const university = await UniversityService.getFacultiesByUniversity(universityId);
+
+      if (!university) {
+        return res.status(404).json({ success: false, message: "University not found" });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          faculties: university.faculties, 
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new UniversityController();

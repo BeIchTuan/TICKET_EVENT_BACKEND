@@ -5,7 +5,7 @@ const Schema = mongoose.Schema;
 const UniversitySchema = new Schema(
   {
     name: { type: String, required: true },
-    faculties: [{ type: String, ref: "Faculty" }],
+    faculties: [{ type: Schema.Types.ObjectId, ref: "Faculty" }],
     isDeleted: { type: Boolean, default: false },
   },
   { collection: "university" }
