@@ -3,6 +3,7 @@ const TransferTicket = require('../models/TransferTicketModel');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const Event = require('../models/EventModel');
 
 class TicketService {
   static generateBookingCode() {
@@ -32,19 +33,31 @@ class TicketService {
     }
   }
 
-  static async cancelTicket(ticketId, reason) {
-    try {
-      const ticket = await Ticket.findById(ticketId);
-      if (!ticket) throw new Error('Ticket not found');
-      
-      if (ticket.status === 'checked-in') 
-        throw new Error('Cannot cancel checked-in ticket');
-
-      ticket.status = 'cancelled';
-      ticket.cancelReason = reason;
-      return await ticket.save();
-    } catch (error) {
-      throw error;
+  static async cancelTicket(ticketId, userId, reason) {
+    const ticket = await Ticket.findById(ticketId);
+    
+    if (!ticket) {
+      throw new Error("Ticket not found");
+    }
+    
+    if (ticket.buyerId.toString() !== userId) {
+      throw new Error("You are not authorized to cancel this ticket");
+    }
+    
+    if (ticket.status === 'cancelled') {
+      throw new Error("Ticket is already cancelled");
+    }
+    
+    // Cập nhật trạng thái và lý do hủy vé
+    ticket.status = 'cancelled';
+    ticket.cancelReason = reason;
+    await ticket.save();
+    
+    // Có thể thêm logic để cập nhật số lượng vé đã bán của sự kiện
+    const event = await Event.findById(ticket.eventId);
+    if (event) {
+      event.ticketsSold = Math.max(0, event.ticketsSold - 1);
+      await event.save();
     }
   }
 

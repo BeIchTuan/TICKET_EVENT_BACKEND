@@ -33,9 +33,17 @@ class TicketController {
   static async cancelTicket(req, res) {
     try {
       const { ticketId } = req.params;
+      const { cancelReason } = req.body;
       const userId = req.id;
 
-      await TicketService.cancelTicket(ticketId, userId);
+      if (!cancelReason) {
+        return res.status(400).json({
+          status: "error",
+          message: "Reason is required for cancellation"
+        });
+      }
+
+      await TicketService.cancelTicket(ticketId, userId, cancelReason);
       
       res.status(200).json({
         message: "Ticket cancelled successfully."
@@ -105,17 +113,22 @@ class TicketController {
       
       if (!qrCode) {
         return res.status(400).json({
+          status: "error",
           message: "QR code is required"
         });
       }
 
-      await TicketService.checkInByQR(qrCode);
+      const updatedTicket = await TicketService.checkInByQR(qrCode);
       
       res.status(200).json({
-        message: "Check-in successful."
+        status: "success",
+        message: "Check-in successful.",
+        ticket: updatedTicket
       });
     } catch (error) {
+      console.error('Check-in error:', error);
       res.status(500).json({
+        status: "error",
         message: error.message
       });
     }

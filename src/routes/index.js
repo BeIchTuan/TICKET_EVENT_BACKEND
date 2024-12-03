@@ -4,6 +4,8 @@ const UniversityRouter = require('./UniversityRouter');
 const AuthRouter = require('./AuthRouter');
 const FacultyRouter = require('./FacultyRouter');
 const ticketRouter = require("./TicketRouter");
+const eventRouter = require('./EventRouter');
+const categoryRouter = require('./CategoryRouter');
 
 const routes = (app) => {
   app.use("/api/payment", paymentRoutes);
@@ -11,7 +13,9 @@ const routes = (app) => {
   app.use('/api/auth', AuthRouter)
   app.use('/api/universities', UniversityRouter)
   app.use('/api/faculties', FacultyRouter)
-  app.use('/api/ticket', ticketRouter); 
+  app.use('/api/ticket', ticketRouter);
+  app.use('/api/events', eventRouter);
+  app.use('/api/categories', categoryRouter);
 };
 
 module.exports = routes;

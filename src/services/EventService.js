@@ -1,0 +1,176 @@
+const Event = require('../models/EventModel');
+const User = require('../models/UserModel');
+const Category = require('../models/CategoryModel');
+
+class EventService {
+  static async createEvent(eventData) {
+    try {
+      console.log('Input eventData:', JSON.stringify(eventData, null, 2));
+      
+      // Kiểm tra collaborators có role event_creator
+      if (eventData.collaborators?.length) {
+        const collaborators = await User.find({
+          _id: { $in: eventData.collaborators },
+          role: 'event_creator'
+        });
+        
+        if (collaborators.length !== eventData.collaborators.length) {
+          throw new Error('Some collaborators are not event creators');
+        }
+      }
+
+      // Validate categoryId
+      const category = await Category.findById(eventData.categoryId);
+      if (!category) {
+        throw new Error('Category not found');
+      }
+
+      // Validate date
+      const eventDate = new Date(eventData.date);
+      if (eventDate < new Date()) {
+        throw new Error('Event date must be in the future');
+      }
+
+      // Validate price and maxAttendees
+      if (eventData.price < 0) {
+        throw new Error('Price must be positive');
+      }
+      if (eventData.maxAttendees < 0) {
+        throw new Error('Maximum attendees must be positive');
+      }
+
+      const event = new Event(eventData);
+      
+      // Validate thủ công
+      const validationError = event.validateSync();
+      if (validationError) {
+        console.log('Validation errors:', validationError.errors);
+        throw validationError;
+      }
+      
+      console.log('Event before save:', event);
+      const savedEvent = await event.save();
+      return savedEvent;
+    } catch (error) {
+      console.log('Detailed error:', {
+        message: error.message,
+        errors: error.errors,
+        code: error.code,
+        details: error.errInfo?.details
+      });
+      throw error;
+    }
+  }
+
+  static async getEvents(filters = {}) {
+    try {
+      const query = { isDeleted: false };
+      
+      if (filters.status) query.status = filters.status;
+      if (filters.date) query.date = filters.date;
+      if (filters.categoryId) query.categoryId = filters.categoryId;
+
+      return await Event.find(query)
+        .select('name description date price location status')
+        .populate('categoryId', 'name');
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async updateEvent(eventId, userId, updateData) {
+    try {
+      const event = await Event.findOne({ 
+        _id: eventId,
+        createdBy: userId,
+        isDeleted: false
+      });
+
+      if (!event) throw new Error('Event not found or unauthorized');
+
+      // Kiểm tra collaborators nếu được cập nhật
+      if (updateData.collaborators) {
+        const collaborators = await User.find({
+          _id: { $in: updateData.collaborators },
+          role: 'event_creator'
+        });
+        
+        if (collaborators.length !== updateData.collaborators.length) {
+          throw new Error('Some collaborators are not event creators');
+        }
+      }
+
+      Object.assign(event, updateData);
+      await event.save();
+      return event;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async deleteEvent(eventId, userId) {
+    try {
+      const event = await Event.findOneAndUpdate(
+        { 
+          _id: eventId,
+          createdBy: userId,
+          isDeleted: false
+        },
+        { isDeleted: true },
+        { new: true }
+      );
+
+      if (!event) throw new Error('Event not found or unauthorized');
+      return event;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async getEventDetails(eventId) {
+    try {
+      const event = await Event.findOne({ _id: eventId, isDeleted: false })
+        .populate('collaborators', '_id name avatar studentId')
+        .populate({
+          path: 'createdBy',
+          select: '_id name avatar studentId'
+        })
+        .populate('categoryId', 'name');
+
+      if (!event) throw new Error('Event not found');
+      return event;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async searchEvents(searchParams) {
+    try {
+      const query = { isDeleted: false };
+      
+      if (searchParams.name) {
+        query.$text = { $search: searchParams.name };
+      }
+      if (searchParams.location) {
+        query.location = { $regex: searchParams.location, $options: 'i' };
+      }
+      if (searchParams.date) {
+        query.date = searchParams.date;
+      }
+      if (searchParams.categoryId) {
+        query.categoryId = searchParams.categoryId;
+      }
+      if (searchParams.status) {
+        query.status = searchParams.status;
+      }
+
+      return await Event.find(query)
+        .populate('categoryId', 'name')
+        .populate('createdBy', '_id name');
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
+module.exports = EventService;
