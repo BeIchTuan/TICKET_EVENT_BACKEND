@@ -1,12 +1,12 @@
 const UserService = require("../services/UserService");
 const User = require("../models/UserModel");
-// const cloudinary = require("../config/cloudinary");
-// const { uploadToCloudinary } = require("../utils/uploadImage");
+const cloudinary = require("../config/cloudinary");
+const { uploadToCloudinary } = require("../utils/UploadImage");
 
 class UserController {
   async updateUser(req, res) {
     try {
-      const userId = req.id;
+      const userId = req.params.id;
       const data = req.body;
 
       if (!userId) {
@@ -24,32 +24,16 @@ class UserController {
         });
       }
 
-      let fieldsToUpdate = {};
-      if (user.role === "user") {
-        const { name, avatar, birthday, gender, phone, address } = data;
-        fieldsToUpdate = { name, avatar, birthday, gender, phone, address };
-      } else if (user.role === "seller") {
-        const { shopName, shopDescription, address } = data;
-        fieldsToUpdate = { shopName, shopDescription, address };
-      } else {
-        return res.status(400).json({
-          status: "error",
-          message: "Invalid role",
-        });
-      }
-
       if (req.file) {
         const uploadResult = await uploadToCloudinary(req.file, "avatar");
-        fieldsToUpdate.avatar = uploadResult.secure_url;
+        data.avatar = uploadResult.secure_url;
       } else {
-        fieldsToUpdate.avatar = user.avatar;
+        data.avatar = user.avatar;
       }
 
-      const response = await UserService.updateUser(userId, fieldsToUpdate);
+      const response = await UserService.updateUser(userId, data);
       return res.status(200).json({
-        status: "success",
-        message: "User updated successfully",
-        data: response.data,
+        message: "User information updated successfully.",
       });
     } catch (error) {
       return res.status(500).json({
@@ -82,7 +66,7 @@ class UserController {
 
   async getUser(req, res) {
     try {
-      const userId = req.params.id;
+      const userId = req.id;
 
       if (!userId) {
         return res.status(400).json({

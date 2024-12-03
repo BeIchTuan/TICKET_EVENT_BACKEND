@@ -5,7 +5,7 @@ const Faculty = require("../models/FacultyModel");
 const University = require("../models/UniversityModel");
 const Major = require("../models/MajorModel");
 
-// const { deleteFromCloudinary } = require("../utils/uploadImage");
+const { deleteFromCloudinary } = require("../utils/UploadImage");
 
 class UserService {
   async updateUser(id, data) {
@@ -24,17 +24,6 @@ class UserService {
         await deleteFromCloudinary(publicId); // Delete old avatar
       } else if (!data.avatar && user.avatar) {
         data.avatar = user.avatar; // Keep the old avatar if no new avatar provided
-      }
-
-      if (data.address) {
-        try {
-          data.address = JSON.parse(data.address); // Parse address JSON
-        } catch {
-          return {
-            status: "error",
-            message: "Invalid address format. Ensure it's a valid JSON string.",
-          };
-        }
       }
 
       Object.assign(user, data);
@@ -73,7 +62,10 @@ class UserService {
 
   async getUser(id) {
     try {
-      const user = await User.findById(id);
+      const user = await User.findById(id)
+        .populate("university", "name")
+        .populate("faculty", "name")
+        .populate("major", "name");
 
       if (!user) {
         return {
@@ -83,20 +75,18 @@ class UserService {
       }
 
       const userData = {
+        _id: user._id,
         email: user.email,
-        name: user.name,
-        avatar: user.avatar,
-        birthday: user.birthday,
-        gender: user.gender,
-        phone: user.phone,
-        address: user.address,
+        name: user.name || null,
+        avatar: user.avatar || null,
+        university: user.university ? user.university.name : null,
+        faculty: user.faculty ? user.faculty.name : null,
+        major: user.major ? user.major.name : null,
+        studentId: user.studentId || null,
+        birthday: user.birthday || null,
+        gender: user.gender || null,
+        phone: user.phone || null,
       };
-
-      if (user.role === "seller") {
-        userData.shopName = user.shopName;
-        userData.shopDescription = user.shopDescription;
-        userData.shopAddress = user.shopAddress;
-      }
 
       return {
         status: "success",
@@ -110,12 +100,12 @@ class UserService {
   async getUsers({ role }) {
     try {
       const filter = role ? { role } : {};
-  
+
       const users = await User.find(filter)
         .populate("university", "name")
         .populate("faculty", "name")
         .populate("major", "name");
-  
+
       return users.map((user) => ({
         _id: user._id,
         email: user.email,
@@ -137,12 +127,12 @@ class UserService {
   async searchUsers({ email, name, phone }) {
     try {
       const filter = {};
-      if (email) filter.email = email; 
-      if (phone) filter.phone = phone; 
-      if (name) filter.name = { $regex: name, $options: "i" }; 
-  
-      const users = await User.find(filter); 
-  
+      if (email) filter.email = email;
+      if (phone) filter.phone = phone;
+      if (name) filter.name = { $regex: name, $options: "i" };
+
+      const users = await User.find(filter);
+
       return users.map((user) => ({
         _id: user._id,
         name: user.name,
@@ -152,7 +142,7 @@ class UserService {
     } catch (error) {
       throw new Error(error.message); // Ném lỗi để controller xử lý
     }
-  } 
+  }
 }
 
 module.exports = new UserService();
