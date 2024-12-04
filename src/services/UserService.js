@@ -27,7 +27,9 @@ class UserService {
       }
 
       Object.assign(user, data);
-      const updatedUser = await user.save();
+      await user.save();
+
+      const updatedUser = await this.getUser(id);
 
       return {
         status: "success",

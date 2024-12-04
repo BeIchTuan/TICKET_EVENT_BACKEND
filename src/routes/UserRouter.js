@@ -12,7 +12,7 @@ router.get(
 );
 
 router.put(
-  "/:id",
+  "/update",
   upload.single("avatar"),
   authMiddleware(["ticket_buyer", "event_creator", "admin"]),
   userController.updateUser

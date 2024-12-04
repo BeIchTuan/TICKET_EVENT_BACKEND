@@ -6,7 +6,9 @@ const { uploadToCloudinary } = require("../utils/UploadImage");
 class UserController {
   async updateUser(req, res) {
     try {
-      const userId = req.params.id;
+      const userId = req.id;
+      console.log("userId", userId);
+      
       const data = req.body;
 
       if (!userId) {
@@ -32,9 +34,8 @@ class UserController {
       }
 
       const response = await UserService.updateUser(userId, data);
-      return res.status(200).json({
-        message: "User information updated successfully.",
-      });
+      
+      return res.status(200).json(response.data);
     } catch (error) {
       return res.status(500).json({
         message: "Internal server error",
