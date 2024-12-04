@@ -86,12 +86,10 @@ class UserService {
         birthday: user.birthday || null,
         gender: user.gender || null,
         phone: user.phone || null,
+        role: user.role || null,
       };
 
-      return {
-        status: "success",
-        user: userData,
-      };
+      return userData;
     } catch (error) {
       throw new Error(error.message);
     }
