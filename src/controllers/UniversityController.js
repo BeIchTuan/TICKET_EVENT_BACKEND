@@ -14,7 +14,8 @@ class UniversityController {
   // Get all universities
   async getAllUniversities(req, res) {
     try {
-      const universities = await UniversityService.getAllUniversities();
+      const universities =
+        await UniversityService.getAllUniversitiesWithFacultiesAndMajors();
       res.status(200).json(universities);
     } catch (error) {
       res.status(500).json({ message: "Error retrieving universities", error });

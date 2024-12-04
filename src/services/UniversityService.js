@@ -17,6 +17,22 @@ class UniversityService {
     return await University.findOne({ _id: id, isDeleted: { $ne: true } });
   }
 
+  // Get all universities and populate faculties, majors
+  async getAllUniversitiesWithFacultiesAndMajors() {
+    return await University.find({ isDeleted: { $ne: true } })
+      .select("name _id")
+      .populate({
+        path: "faculties",
+        match: { isDeleted: { $ne: true } },
+        select: "name _id",
+        populate: {
+          path: "majors",
+          match: { isDeleted: { $ne: true } },
+          select: "name _id",
+        },
+      });
+  }
+
   // Update a university by ID
   async updateUniversity(id, data) {
     return await University.findByIdAndUpdate(id, data, { new: true });
@@ -32,12 +48,11 @@ class UniversityService {
   }
 
   async getFacultiesByUniversity(universityId) {
-    return await University.findById(universityId)
-    .populate({
+    return await University.findById(universityId).populate({
       path: "faculties",
-      match: { isDeleted: { $ne: true } }, 
-      select: "name _id", 
-    })
+      match: { isDeleted: { $ne: true } },
+      select: "name _id",
+    });
   }
 }
 
