@@ -71,8 +71,18 @@ class EventService {
       if (filters.categoryId) query.categoryId = filters.categoryId;
 
       return await Event.find(query)
-        .select('name description date price location status')
-        .populate('categoryId', 'name');
+        //.select("name description date price location status images maxAttendees ticketsSold")
+        .populate("categoryId", "name")
+        .exec()
+        // đổi tên categoryId thành category trong data trả về
+        .then((events) =>
+          events.map((event) => {
+            const eventObj = event.toObject();
+            eventObj.category = eventObj.categoryId;
+            delete eventObj.categoryId;
+            return eventObj;
+          })
+        );
     } catch (error) {
       throw error;
     }
@@ -130,14 +140,22 @@ class EventService {
   static async getEventDetails(eventId) {
     try {
       const event = await Event.findOne({ _id: eventId, isDeleted: false })
-        .populate('collaborators', '_id name avatar studentId')
+        .populate("collaborators", "_id name avatar studentId")
         .populate({
-          path: 'createdBy',
-          select: '_id name avatar studentId'
+          path: "createdBy",
+          select: "_id name avatar studentId",
         })
-        .populate('categoryId', 'name');
+        .populate("categoryId", "name");
+        
+      // đổi tên categoryId thành category trong data trả về
+      if (event) {
+        const eventObj = event.toObject();
+        eventObj.category = eventObj.categoryId;
+        delete eventObj.categoryId;
+        return eventObj;
+      }
 
-      if (!event) throw new Error('Event not found');
+      if (!event) throw new Error("Event not found");
       return event;
     } catch (error) {
       throw error;
