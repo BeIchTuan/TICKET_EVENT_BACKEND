@@ -3,6 +3,7 @@ const router = express.Router();
 const userController = require("../controllers/UserController");
 const { authMiddleware } = require("../middlewares/AuthMiddleware");
 const upload = require("../middlewares/UploadImage");
+const filterNullValues = require("../middlewares/FilterNullValues");
 
 //Work with user information
 router.get(
@@ -14,6 +15,7 @@ router.get(
 router.put(
   "/update",
   upload.single("avatar"),
+  filterNullValues,
   authMiddleware(["ticket_buyer", "event_creator", "admin"]),
   userController.updateUser
 );
@@ -24,6 +26,5 @@ router.get("/all", authMiddleware(["admin"]), userController.getUsers);
 
 //Search users
 router.get("/search", userController.searchUsers);
-
 
 module.exports = router;

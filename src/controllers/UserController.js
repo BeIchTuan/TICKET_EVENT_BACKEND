@@ -7,8 +7,7 @@ class UserController {
   async updateUser(req, res) {
     try {
       const userId = req.id;
-      console.log("userId", userId);
-      
+            
       const data = req.body;
 
       if (!userId) {
