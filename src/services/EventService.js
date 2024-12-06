@@ -71,8 +71,8 @@ class EventService {
       if (filters.categoryId) query.categoryId = filters.categoryId;
 
       return await Event.find(query)
-        //.select("name description date price location status images maxAttendees ticketsSold")
         .populate("categoryId", "name")
+        .populate("createdBy", "name")
         .exec()
         // đổi tên categoryId thành category trong data trả về
         .then((events) =>
@@ -146,7 +146,7 @@ class EventService {
           select: "_id name avatar studentId",
         })
         .populate("categoryId", "name");
-        
+
       // đổi tên categoryId thành category trong data trả về
       if (event) {
         const eventObj = event.toObject();
