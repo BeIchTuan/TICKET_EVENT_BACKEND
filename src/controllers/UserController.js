@@ -7,7 +7,7 @@ class UserController {
   async updateUser(req, res) {
     try {
       const userId = req.id;
-            
+
       const data = req.body;
 
       if (!userId) {
@@ -33,7 +33,7 @@ class UserController {
       }
 
       const response = await UserService.updateUser(userId, data);
-      
+
       return res.status(200).json(response.data);
     } catch (error) {
       return res.status(500).json({
@@ -86,7 +86,7 @@ class UserController {
   }
 
   async getUsers(req, res) {
-    const { role } = req.query; 
+    const { role } = req.query;
     try {
       const users = await UserService.getUsers({ role });
       res.status(200).json(users);
@@ -97,16 +97,18 @@ class UserController {
   }
 
   async searchUsers(req, res) {
-    const { email, name, phone } = req.query; 
+    const { query } = req.query; // Lấy query từ query string
     try {
-      const users = await UserService.searchUsers({ email, name, phone });
-      res.status(200).json(users); 
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
+      }
+      const users = await UserService.searchUsers(query.trim());
+      res.status(200).json(users);
     } catch (error) {
       console.error("Error searching users:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
-  
 }
 
 module.exports = new UserController();

@@ -124,12 +124,17 @@ class UserService {
     }
   }
 
-  async searchUsers({ email, name, phone }) {
+  async searchUsers(query) {
     try {
       const filter = {};
-      if (email) filter.email = email;
-      if (phone) filter.phone = phone;
-      if (name) filter.name = { $regex: name, $options: "i" };
+
+      if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
+        filter.email = query;
+      } else if (/^\d+$/.test(query)) {
+        filter.phone = query;
+      } else {
+        filter.name = { $regex: query, $options: "i" };
+      }
 
       const users = await User.find(filter);
 
@@ -140,7 +145,7 @@ class UserService {
         studentId: user.studentId || null,
       }));
     } catch (error) {
-      throw new Error(error.message); // Ném lỗi để controller xử lý
+      throw new Error(error.message);
     }
   }
 }
