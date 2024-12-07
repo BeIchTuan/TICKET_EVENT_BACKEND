@@ -1,4 +1,8 @@
 const EventService = require('../services/EventService');
+const {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require("../utils/UploadImage");
 
 class EventController {
   static async createEvent(req, res) {
@@ -13,10 +17,17 @@ class EventController {
         status: 'active',
         isDeleted: false
       };
+
+      const imageUrls = [];
+
+      for (const file of req.files) {
+        const result = await uploadToCloudinary(file, "events");
+        imageUrls.push(result.secure_url); 
+      }
       
       console.log('Event data:', eventData);
       
-      const event = await EventService.createEvent(eventData);
+      const event = await EventService.createEvent({...eventData, images: imageUrls});
       res.status(201).json({
         success: true,
         message: "Event created successfully.",
