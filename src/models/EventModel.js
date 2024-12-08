@@ -8,7 +8,6 @@ const eventSchema = new Schema({
   },
   description: { 
     type: String, 
-    required: true 
   },
   images: [{ 
     type: String 
@@ -28,7 +27,6 @@ const eventSchema = new Schema({
   },
   price: { 
     type: Number, 
-    required: true 
   },
   maxAttendees: { 
     type: Number, 
