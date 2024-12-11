@@ -69,18 +69,20 @@ class EventService {
       if (filters.status) query.status = filters.status;
       if (filters.date) query.date = filters.date;
       if (filters.categoryId) query.categoryId = filters.categoryId;
+      if (filters.createdBy) query.createdBy = filters.createdBy;
 
       return await Event.find(query)
+        .sort({ createdAt: -1 })
         .populate("categoryId", "name")
         .populate("createdBy", "name")
         .exec()
         // đổi tên categoryId thành category trong data trả về
         .then((events) =>
           events.map((event) => {
-            const eventObj = event.toObject();
-            eventObj.category = eventObj.categoryId;
-            delete eventObj.categoryId;
-            return eventObj;
+        const eventObj = event.toObject();
+        eventObj.category = eventObj.categoryId;
+        delete eventObj.categoryId;
+        return eventObj;
           })
         );
     } catch (error) {
