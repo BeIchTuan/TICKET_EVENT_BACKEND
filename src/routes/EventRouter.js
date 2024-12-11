@@ -18,6 +18,7 @@ router.post('/create',
 
 router.put('/:eventId', 
   authMiddleware(['event_creator', 'admin']), 
+  upload.array('images', 10),
   EventController.updateEvent
 );
 

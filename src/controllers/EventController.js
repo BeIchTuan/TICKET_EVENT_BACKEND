@@ -68,12 +68,47 @@ class EventController {
 
   static async updateEvent(req, res) {
     try {
-      await EventService.updateEvent(req.params.eventId, req.id, req.body);
+      // Parse dữ liệu từ form-data
+      const eventData = {
+        name: req.body.name,
+        description: req.body.description,
+        location: req.body.location,
+        date: req.body.date,
+        price: req.body.price ? Number(req.body.price) : undefined,
+        maxAttendees: req.body.maxAttendees ? Number(req.body.maxAttendees) : undefined,
+        categoryId: req.body.categoryId ? JSON.parse(req.body.categoryId) : undefined,
+      };
+
+      // Xử lý upload ảnh mới (nếu có)
+      if (req.files && req.files.length > 0) {
+        const imageUrls = [];
+        for (const file of req.files) {
+          const result = await uploadToCloudinary(file, "events");
+          imageUrls.push(result.secure_url);
+        }
+        eventData.images = imageUrls;
+      }
+
+      // Lọc bỏ các trường undefined
+      Object.keys(eventData).forEach(key => 
+        eventData[key] === undefined && delete eventData[key]
+      );
+
+      const updatedEvent = await EventService.updateEvent(
+        req.params.eventId,
+        req.id,
+        eventData
+      );
+
       res.status(200).json({
-        message: "Event updated successfully."
+        success: true,
+        message: "Event updated successfully",
+        data: updatedEvent
       });
     } catch (error) {
+      console.error('Error updating event:', error);
       res.status(500).json({
+        success: false,
         message: error.message
       });
     }
