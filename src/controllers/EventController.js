@@ -3,6 +3,8 @@ const {
   uploadToCloudinary,
   deleteFromCloudinary,
 } = require("../utils/UploadImage");
+const multer = require('multer');
+const upload = multer();
 
 class EventController {
   static async createEvent(req, res) {
@@ -19,10 +21,11 @@ class EventController {
       };
 
       const imageUrls = [];
-
-      for (const file of req.files) {
-        const result = await uploadToCloudinary(file, "events");
-        imageUrls.push(result.secure_url); 
+      if (req.files) {
+        for (const file of req.files) {
+          const result = await uploadToCloudinary(file, "events");
+          imageUrls.push(result.secure_url); 
+        }
       }
       
       console.log('Event data:', eventData);
