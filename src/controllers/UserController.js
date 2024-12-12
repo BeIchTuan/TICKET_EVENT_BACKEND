@@ -99,11 +99,12 @@ class UserController {
   async searchUsers(req, res) {
     const { query } = req.query; // Lấy query từ query string
     const { role } = req.query; // Lấy role từ query string
+    const userId = req.id;
     try {
       if (!query) {
         return res.status(400).json({ message: "Query is required" });
       }
-      const users = await UserService.searchUsers(query.trim(), role);
+      const users = await UserService.searchUsers(query.trim(), role, userId);
       res.status(200).json(users);
     } catch (error) {
       console.error("Error searching users:", error);

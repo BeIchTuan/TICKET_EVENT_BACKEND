@@ -25,6 +25,10 @@ router.put(
 router.get("/all", authMiddleware(["admin"]), userController.getUsers);
 
 //Search users
-router.get("/search", userController.searchUsers);
+router.get(
+  "/search",
+  authMiddleware(["admin", "event_creator", "ticket_buyer"]),
+  userController.searchUsers
+);
 
 module.exports = router;
