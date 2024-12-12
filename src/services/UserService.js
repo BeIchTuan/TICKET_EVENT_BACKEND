@@ -124,7 +124,7 @@ class UserService {
     }
   }
 
-  async searchUsers(query) {
+  async searchUsers(query, role) {
     try {
       const filter = {};
 
@@ -134,6 +134,10 @@ class UserService {
         filter.phone = query;
       } else {
         filter.name = { $regex: query, $options: "i" };
+      }
+
+      if (role) {
+        filter.role = role;
       }
 
       const users = await User.find(filter);
