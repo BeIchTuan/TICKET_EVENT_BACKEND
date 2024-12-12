@@ -4,10 +4,11 @@ const QRCode = require('qrcode');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Event = require('../models/EventModel');
+const { generateQRCode } = require('../utils/QRCodeGenerator');
 
 class TicketService {
   static generateBookingCode() {
-    return crypto.randomBytes(4).toString('hex').toUpperCase();
+    return 'TICKET-' + Math.random().toString(36).substr(2, 9).toUpperCase();
   }
 
   static async generateQRCode(bookingCode) {
@@ -15,22 +16,35 @@ class TicketService {
   }
 
   static async bookTicket(eventId, buyerId) {
-    try {
-      const bookingCode = this.generateBookingCode();
-      const qrCode = await this.generateQRCode(bookingCode);
-
-      const ticket = new Ticket({
-        eventId,
-        buyerId,
-        bookingCode,
-        qrCode,
-        status: 'booked'
-      });
-
-      return await ticket.save();
-    } catch (error) {
-      throw error;
+    const event = await Event.findById(eventId);
+    if (!event) {
+      throw new Error('Event not found');
     }
+
+    // Kiểm tra số lượng vé còn lại
+    if (event.maxAttendees && event.ticketsSold >= event.maxAttendees) {
+      throw new Error('Event is fully booked');
+    }
+
+    const bookingCode = this.generateBookingCode();
+    const qrCode = await generateQRCode(bookingCode);
+
+    const ticket = new Ticket({
+      eventId,
+      buyerId,
+      bookingCode,
+      qrCode,
+      status: 'booked',
+      paymentStatus: 'pending'
+    });
+
+    await ticket.save();
+    
+    // Cập nhật số lượng vé đã bán
+    event.ticketsSold += 1;
+    await event.save();
+
+    return ticket;
   }
 
   static async cancelTicket(ticketId, userId, reason) {

@@ -64,32 +64,30 @@ class MomoService {
   }
 
   static async checkTransactionStatus(orderId) {
-    const rawSignature = 
-      `accessKey=${momoConfig.ACCESS_KEY}&orderId=${orderId}&partnerCode=${momoConfig.PARTNER_CODE}&requestId=${orderId}`;
-
-    const signature = this.generateSignature(rawSignature);
-
-    const requestBody = {
-      partnerCode: momoConfig.PARTNER_CODE,
-      requestId: orderId,
-      orderId: orderId,
-      signature: signature,
-      lang: "vi",
-    };
-
     try {
+      const requestId = `CHECK_${Date.now()}`;
+      const rawSignature = `accessKey=${momoConfig.ACCESS_KEY}&orderId=${orderId}&partnerCode=${momoConfig.PARTNER_CODE}&requestId=${requestId}`;
+      const signature = crypto
+        .createHmac('sha256', momoConfig.SECRET_KEY)
+        .update(rawSignature)
+        .digest('hex');
+
+      const requestBody = {
+        partnerCode: momoConfig.PARTNER_CODE,
+        requestId: requestId,
+        orderId: orderId,
+        signature: signature,
+        lang: 'vi'
+      };
+
       const response = await axios.post(
         `${momoConfig.API_ENDPOINT}/query`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        requestBody
       );
+
       return response.data;
     } catch (error) {
-      throw new Error("Failed to check transaction status");
+      throw new Error('Lỗi khi kiểm tra trạng thái giao dịch: ' + error.message);
     }
   }
 }

@@ -31,6 +31,15 @@ const ticketSchema = new Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  paymentStatus: { 
+    type: String, 
+    enum: ['pending', 'paid', 'failed'],
+    default: 'pending'
+  },
+  paymentData: {
+    type: Object,
+    default: null
   }
 }, {
   timestamps: true, // Tự động thêm createdAt và updatedAt
