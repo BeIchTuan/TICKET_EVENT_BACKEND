@@ -143,6 +143,7 @@ class EventService {
     try {
       const event = await Event.findOne({ _id: eventId, isDeleted: false })
         .populate("collaborators", "_id name avatar studentId")
+        .populate("createdBy", "_id name avatar studentId")
         .populate({
           path: "createdBy",
           select: "_id name avatar studentId",
