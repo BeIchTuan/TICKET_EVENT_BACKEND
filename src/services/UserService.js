@@ -124,9 +124,13 @@ class UserService {
     }
   }
 
-  async searchUsers(query) {
+  async searchUsers(query, role, userId) {
     try {
-      const filter = {};
+      const filter = {
+        _id: { $ne: userId } // Exclude the user with userId
+      };
+      console.log(userId);
+      
 
       if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
         filter.email = query;
@@ -134,6 +138,10 @@ class UserService {
         filter.phone = query;
       } else {
         filter.name = { $regex: query, $options: "i" };
+      }
+
+      if (role) {
+        filter.role = role;
       }
 
       const users = await User.find(filter);
