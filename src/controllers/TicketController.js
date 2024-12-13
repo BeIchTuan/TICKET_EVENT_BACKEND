@@ -47,14 +47,8 @@ class TicketController {
           console.error('Error sending free ticket email:', emailError);
         }
 
-        return res.status(201).json({
-          status: "success",
-          message: "Free ticket booked successfully",
-          data: {
-            ticket,
-            paymentStatus: 'paid'
-          }
-        });
+        // Trả về thông tin vé khi đặt miễn phí
+        return res.status(201).json(ticket);
       }
 
       // Nếu không phải vé miễn phí, xử lý thanh toán như bình thường
@@ -72,20 +66,16 @@ class TicketController {
       console.log('Added ticket to user ticketsBought:', buyerId);
 
       res.status(201).json({
-        status: "success",
-        message: "Ticket booked successfully",
-        data: {
-          _id: ticket._id,
-          eventId: ticket.eventId,
-          buyerId: ticket.buyerId,
-          bookingCode: ticket.bookingCode,
-          qrCode: ticket.qrCode,
-          status: ticket.status,
-          paymentStatus: ticket.paymentStatus,
-          createdAt: ticket.createdAt,
-          updatedAt: ticket.updatedAt
-        },
-        paymentData: paymentResult
+        _id: ticket._id,
+        eventId: ticket.eventId,
+        buyerId: ticket.buyerId,
+        bookingCode: ticket.bookingCode,
+        qrCode: ticket.qrCode,
+        status: ticket.status,
+        paymentStatus: ticket.paymentStatus,
+        paymentData: paymentResult,
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt,
       });
     } catch (error) {
       res.status(500).json({
