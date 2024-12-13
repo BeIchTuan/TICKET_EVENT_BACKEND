@@ -13,6 +13,7 @@ class MomoService {
   static async createPayment(amount, orderInfo = "Payment for ticket") {
     const orderId = momoConfig.PARTNER_CODE + new Date().getTime();
     const requestId = orderId;
+    const responseTime = 1734024385709;
 
     const rawSignature = 
       "accessKey=" + momoConfig.ACCESS_KEY +
@@ -87,7 +88,7 @@ class MomoService {
 
       return response.data;
     } catch (error) {
-      throw new Error('Lỗi khi kiểm tra trạng thái giao dịch: ' + error.message);
+      throw new Error('Lỗi khi kiểm tra trạng th��i giao dịch: ' + error.message);
     }
   }
 }

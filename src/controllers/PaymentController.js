@@ -1,5 +1,6 @@
 const MomoService = require("../services/MomoService");
 const Ticket = require("../models/TicketModel");
+const EmailService = require("../services/EmailService");
 
 class PaymentController {
   static async createPayment(req, res) {
@@ -17,25 +18,42 @@ class PaymentController {
 
   static async handleCallback(req, res) {
     try {
-      console.log("MoMo callback data:", req.body);
+      console.log("=== START PAYMENT CALLBACK ===");
+      console.log("Headers:", req.headers);
+      console.log("Body:", req.body);
       const { orderId, resultCode, message } = req.body;
 
-      // Tìm vé dựa trên orderId trong paymentData
+      console.log("Looking for ticket with orderId:", orderId);
       const ticket = await Ticket.findOne({ "paymentData.orderId": orderId });
+      console.log("Found ticket:", ticket);
       
       if (!ticket) {
+        console.log("No ticket found for orderId:", orderId);
         return res.status(404).json({
           success: false,
           message: "Không tìm thấy vé với orderId này"
         });
       }
 
-      // Cập nhật trạng thái thanh toán dựa vào resultCode từ MoMo
-      // resultCode = 0: Giao dịch thành công
-      // resultCode != 0: Giao dịch thất bại
+      // Cập nhật trạng thái thanh toán
+      const oldStatus = ticket.paymentStatus;
       ticket.paymentStatus = resultCode === 0 ? 'paid' : 'failed';
       await ticket.save();
+      console.log(`Updated payment status from ${oldStatus} to ${ticket.paymentStatus}`);
 
+      // Gửi email nếu thanh toán thành công
+      if (resultCode === 0) {
+        try {
+          console.log("Attempting to send success email...");
+          await EmailService.sendPaymentSuccessEmail(ticket);
+          console.log('Payment success email sent');
+        } catch (emailError) {
+          console.error('Error sending payment success email:', emailError);
+          console.error(emailError.stack);
+        }
+      }
+
+      console.log("=== END PAYMENT CALLBACK ===");
       return res.status(200).json({
         success: true,
         message: `Cập nhật trạng thái thanh toán thành ${ticket.paymentStatus}`,
@@ -65,13 +83,23 @@ class PaymentController {
         });
       }
 
-      // Kiểm tra trạng thái giao dịch với MoMo
       const result = await MomoService.checkTransactionStatus(orderId);
-      
-      // Tìm và cập nhật trạng thái vé
       const ticket = await Ticket.findOne({ "paymentData.orderId": orderId });
+      
       if (ticket) {
-        ticket.paymentStatus = result.resultCode === 0 ? 'paid' : 'failed';
+        const newPaymentStatus = result.resultCode === 0 ? 'paid' : 'failed';
+        
+        // Chỉ gửi email nếu trạng thái thay đổi từ pending sang paid
+        if (ticket.paymentStatus !== 'paid' && newPaymentStatus === 'paid') {
+          try {
+            await EmailService.sendPaymentSuccessEmail(ticket);
+            console.log('Payment success email sent');
+          } catch (emailError) {
+            console.error('Error sending payment success email:', emailError);
+          }
+        }
+        
+        ticket.paymentStatus = newPaymentStatus;
         await ticket.save();
       }
 

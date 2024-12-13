@@ -2,6 +2,7 @@ const TicketService = require('../services/TicketService');
 const MomoService = require('../services/MomoService');
 const Event = require('../models/EventModel');
 const Ticket = require('../models/TicketModel');
+const EmailService = require('../services/EmailService');
 
 class TicketController {
   static async bookTicket(req, res) {
@@ -9,16 +10,40 @@ class TicketController {
       const { eventId } = req.body;
       const buyerId = req.id;
 
-      // Đặt vé
-      const ticket = await TicketService.bookTicket(eventId, buyerId);
-      
       // Lấy thông tin sự kiện để biết giá vé
       const event = await Event.findById(eventId);
       if (!event) {
         throw new Error('Event not found');
       }
 
-      // Tạo thanh toán MoMo
+      // Đặt vé
+      const ticket = await TicketService.bookTicket(eventId, buyerId);
+
+      // Kiểm tra nếu vé miễn phí (price = 0 hoặc null)
+      if (!event.price || event.price === 0) {
+        // Cập nhật trạng thái thanh toán thành công ngay lập tức
+        ticket.paymentStatus = 'paid';
+        await ticket.save();
+
+        // Gửi email xác nhận ngay
+        try {
+          await EmailService.sendPaymentSuccessEmail(ticket);
+          console.log('Free ticket confirmation email sent');
+        } catch (emailError) {
+          console.error('Error sending free ticket email:', emailError);
+        }
+
+        return res.status(201).json({
+          status: "success",
+          message: "Free ticket booked successfully",
+          data: {
+            ticket,
+            paymentStatus: 'paid'
+          }
+        });
+      }
+
+      // Nếu không phải vé miễn phí, xử lý thanh toán như bình thường
       const orderInfo = `Thanh toán vé sự kiện: ${event.name}`;
       const paymentResult = await MomoService.createPayment(event.price, orderInfo);
 
@@ -130,22 +155,87 @@ class TicketController {
 
   static async checkIn(req, res) {
     try {
-      const { qrCode } = req.body;
-      
-      if (!qrCode) {
+      const { bookingCode } = req.body;
+      const createdBy = req.id; // ID của người tổ chức từ token
+
+      // Validate input
+      if (!bookingCode) {
         return res.status(400).json({
           status: "error",
-          message: "QR code is required"
+          message: "Booking code is required"
         });
       }
 
-      const updatedTicket = await TicketService.checkInByQR(qrCode);
+      // Tìm vé với booking code
+      const ticket = await Ticket.findOne({ bookingCode })
+        .populate('eventId')
+        .populate('buyerId');
+
+      if (!ticket) {
+        return res.status(404).json({
+          status: "error",
+          message: "Ticket not found"
+        });
+      }
+
+      // Kiểm tra quyền của người tổ chức
+      if (ticket.eventId.createdBy.toString() !== createdBy) {
+        return res.status(403).json({
+          status: "error",
+          message: "You don't have permission to check-in this ticket"
+        });
+      }
+
+      // Kiểm tra trạng thái vé
+      if (ticket.status === 'checked-in') {
+        return res.status(400).json({
+          status: "error",
+          message: "Ticket already checked-in"
+        });
+      }
+
+      if (ticket.paymentStatus !== 'paid') {
+        return res.status(400).json({
+          status: "error",
+          message: "Ticket payment not completed"
+        });
+      }
+
+      // Kiểm tra thời gian sự kiện
+      const eventDate = new Date(ticket.eventId.date);
+      const now = new Date();
       
+      //Khi nào cần chức năng này thì dùng
+
+      // Cho phép check-in trước 1 giờ và sau khi sự kiện bắt đầu 1 giờ
+      // const oneHoursBefore = new Date(eventDate.getTime() - 1 * 60 * 60 * 1000);
+      // const oneHoursAfter = new Date(eventDate.getTime() + 1 * 60 * 60 * 1000);
+
+      // if (now < oneHoursBefore || now > oneHoursAfter) {
+      //   return res.status(400).json({
+      //     status: "error",
+      //     message: "Check-in is only allowed 1 hours before and 1 hours after event start time"
+      //   });
+      // }
+
+      // Cập nhật trạng thái vé
+      ticket.status = 'checked-in';
+      ticket.checkInTime = new Date();
+      await ticket.save();
+
       res.status(200).json({
         status: "success",
-        message: "Check-in successful.",
-        ticket: updatedTicket
+        message: "Check-in successful",
+        data: {
+          ticket: {
+            id: ticket._id,
+            eventName: ticket.eventId.name,
+            buyerName: ticket.buyerId.name,
+            checkInTime: ticket.checkInTime
+          }
+        }
       });
+
     } catch (error) {
       console.error('Check-in error:', error);
       res.status(500).json({
