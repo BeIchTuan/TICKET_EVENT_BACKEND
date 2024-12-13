@@ -33,4 +33,9 @@ router.post('/check-in',
   TicketController.checkIn
 );
 
+router.get('/history', 
+  authMiddleware(['ticket_buyer']), 
+  TicketController.getTicketHistory
+);
+
 module.exports = router;

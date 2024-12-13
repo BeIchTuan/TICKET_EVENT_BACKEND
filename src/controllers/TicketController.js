@@ -3,6 +3,7 @@ const MomoService = require('../services/MomoService');
 const Event = require('../models/EventModel');
 const Ticket = require('../models/TicketModel');
 const EmailService = require('../services/EmailService');
+const User = require('../models/UserModel');
 
 class TicketController {
   static async bookTicket(req, res) {
@@ -16,6 +17,12 @@ class TicketController {
         throw new Error('Event not found');
       }
 
+      // Kiểm tra user tồn tại
+      const user = await User.findById(buyerId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
       // Đặt vé
       const ticket = await TicketService.bookTicket(eventId, buyerId);
 
@@ -24,6 +31,13 @@ class TicketController {
         // Cập nhật trạng thái thanh toán thành công ngay lập tức
         ticket.paymentStatus = 'paid';
         await ticket.save();
+
+        // Thêm ticket vào ticketsBought của user
+        user.ticketsBought.push(ticket._id);
+        await user.save();
+        console.log('Added ticket to user ticketsBought:', buyerId);
+
+        
 
         // Gửi email xác nhận ngay
         try {
@@ -51,6 +65,11 @@ class TicketController {
       await Ticket.findByIdAndUpdate(ticket._id, {
         paymentData: paymentResult
       });
+
+      // Thêm ticket vào ticketsBought của user
+      user.ticketsBought.push(ticket._id);
+      await user.save();
+      console.log('Added ticket to user ticketsBought:', buyerId);
 
       res.status(201).json({
         status: "success",
@@ -265,6 +284,71 @@ class TicketController {
         message: "Payment status updated"
       });
     } catch (error) {
+      res.status(500).json({
+        status: "error",
+        message: error.message
+      });
+    }
+  }
+
+  static async getTicketHistory(req, res) {
+    try {
+      const userId = req.id; // Lấy ID người dùng từ token
+
+      // Tìm user và populate ticketsBought
+      const user = await User.findById(userId)
+        .populate({
+          path: 'ticketsBought',
+          populate: [
+            {
+              path: 'eventId',
+              select: 'name date location price description banner'
+            },
+            {
+              path: 'buyerId',
+              select: 'name email'
+            }
+          ],
+          options: { sort: { createdAt: -1 } } // Sắp xếp theo thời gian mua mới nhất
+        });
+
+      if (!user) {
+        return res.status(404).json({
+          status: "error",
+          message: "User not found"
+        });
+      }
+
+      // Format lại dữ liệu trước khi trả về
+      const formattedTickets = user.ticketsBought.map(ticket => ({
+        id: ticket._id,
+        bookingCode: ticket.bookingCode,
+        event: {
+          id: ticket.eventId._id,
+          name: ticket.eventId.name,
+          date: ticket.eventId.date,
+          location: ticket.eventId.location,
+          price: ticket.eventId.price,
+          banner: ticket.eventId.banner
+        },
+        status: ticket.status,
+        paymentStatus: ticket.paymentStatus,
+        checkInTime: ticket.checkInTime,
+        qrCode: ticket.qrCode,
+        purchaseDate: ticket.createdAt
+      }));
+
+      res.status(200).json({
+        status: "success",
+        message: "Ticket history retrieved successfully",
+        data: {
+          tickets: formattedTickets,
+          total: formattedTickets.length
+        }
+      });
+
+    } catch (error) {
+      console.error('Get ticket history error:', error);
       res.status(500).json({
         status: "error",
         message: error.message
