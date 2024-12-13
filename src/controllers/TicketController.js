@@ -33,14 +33,8 @@ class TicketController {
           console.error('Error sending free ticket email:', emailError);
         }
 
-        return res.status(201).json({
-          status: "success",
-          message: "Free ticket booked successfully",
-          data: {
-            ticket,
-            paymentStatus: 'paid'
-          }
-        });
+        // Trả về thông tin vé khi đặt miễn phí
+        return res.status(201).json(ticket);
       }
 
       // Nếu không phải vé miễn phí, xử lý thanh toán như bình thường
@@ -52,6 +46,7 @@ class TicketController {
         paymentData: paymentResult
       });
 
+      // Trả về thông tin vé và thông tin thanh toán
       res.status(201).json({
         _id: ticket._id,
         eventId: ticket.eventId,
