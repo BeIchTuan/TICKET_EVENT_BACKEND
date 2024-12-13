@@ -53,20 +53,16 @@ class TicketController {
       });
 
       res.status(201).json({
-        status: "success",
-        message: "Ticket booked successfully",
-        data: {
-          _id: ticket._id,
-          eventId: ticket.eventId,
-          buyerId: ticket.buyerId,
-          bookingCode: ticket.bookingCode,
-          qrCode: ticket.qrCode,
-          status: ticket.status,
-          paymentStatus: ticket.paymentStatus,
-          createdAt: ticket.createdAt,
-          updatedAt: ticket.updatedAt
-        },
-        paymentData: paymentResult
+        _id: ticket._id,
+        eventId: ticket.eventId,
+        buyerId: ticket.buyerId,
+        bookingCode: ticket.bookingCode,
+        qrCode: ticket.qrCode,
+        status: ticket.status,
+        paymentStatus: ticket.paymentStatus,
+        paymentData: paymentResult,
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt,
       });
     } catch (error) {
       res.status(500).json({
