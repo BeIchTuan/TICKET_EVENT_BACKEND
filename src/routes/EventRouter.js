@@ -3,6 +3,7 @@ const router = express.Router();
 const EventController = require('../controllers/EventController');
 const upload = require("../middlewares/UploadImage");
 const { authMiddleware } = require('../middlewares/AuthMiddleware');
+const filterNullValues = require("../middlewares/FilterNullValues");
 
 // Public routes
 router.get('/', EventController.getEvents);
@@ -18,6 +19,7 @@ router.post('/create',
 
 router.put('/:eventId', 
   authMiddleware(['event_creator', 'admin']), 
+  filterNullValues,
   upload.array('images', 10),
   EventController.updateEvent
 );

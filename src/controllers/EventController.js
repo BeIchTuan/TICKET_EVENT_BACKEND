@@ -1,56 +1,60 @@
-const EventService = require('../services/EventService');
+const EventService = require("../services/EventService");
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
 } = require("../utils/UploadImage");
-const multer = require('multer');
+const multer = require("multer");
 const upload = multer();
 
 class EventController {
   static async createEvent(req, res) {
     try {
-      console.log('Headers:', req.headers);
-      console.log('User ID:', req.id);
-      console.log('Request body:', req.body);
-      
+      console.log("Headers:", req.headers);
+      console.log("User ID:", req.id);
+      console.log("Request body:", req.body);
+
       const eventData = {
         ...req.body,
         createdBy: req.id,
-        status: 'active',
-        isDeleted: false
+        status: "active",
+        isDeleted: false,
       };
 
       const imageUrls = [];
       if (req.files) {
         for (const file of req.files) {
           const result = await uploadToCloudinary(file, "events");
-          imageUrls.push(result.secure_url); 
+          imageUrls.push(result.secure_url);
         }
       }
-      
-      console.log('Event data:', eventData);
-      
-      const event = await EventService.createEvent({...eventData, images: imageUrls});
+
+      console.log("Event data:", eventData);
+
+      const event = await EventService.createEvent({
+        ...eventData,
+        images: imageUrls,
+      });
       res.status(201).json({
         success: true,
         message: "Event created successfully.",
-        data: event
+        data: event,
       });
     } catch (error) {
-      console.log('Validation error:', error);
-      
-      const errorDetails = error.errInfo?.details?.schemaRulesNotSatisfied || [];
+      console.log("Validation error:", error);
+
+      const errorDetails =
+        error.errInfo?.details?.schemaRulesNotSatisfied || [];
       const formattedError = {
         message: error.message,
-        validationErrors: errorDetails.map(detail => ({
+        validationErrors: errorDetails.map((detail) => ({
           field: detail.propertyName,
-          reason: detail.description
-        }))
+          reason: detail.description,
+        })),
       };
 
       res.status(400).json({
         success: false,
-        ...formattedError
+        ...formattedError,
       });
     }
   }
@@ -61,7 +65,7 @@ class EventController {
       res.status(200).json(event);
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -75,41 +79,58 @@ class EventController {
         location: req.body.location,
         date: req.body.date,
         price: req.body.price ? Number(req.body.price) : undefined,
-        maxAttendees: req.body.maxAttendees ? Number(req.body.maxAttendees) : undefined,
-        categoryId: req.body.categoryId ? JSON.parse(req.body.categoryId) : undefined,
+        maxAttendees: req.body.maxAttendees
+          ? Number(req.body.maxAttendees)
+          : undefined,
+        categoryId: req.body.categoryId
+          ? JSON.parse(req.body.categoryId)
+          : undefined,
       };
 
       // Xử lý upload ảnh mới (nếu có)
+      let newImageUrls = [];
+      let imagesToDelete = req.body.imagesToDelete || []; // Danh sách ảnh cần xóa (nếu có)
+
+      // Kiểm tra nếu có file tải lên
       if (req.files && req.files.length > 0) {
-        const imageUrls = [];
         for (const file of req.files) {
-          const result = await uploadToCloudinary(file, "events");
-          imageUrls.push(result.secure_url);
+          const result = await uploadToCloudinary(file, "events"); // Tải lên Cloudinary
+          newImageUrls.push(result.secure_url); // Lưu URL của ảnh mới
         }
-        eventData.images = imageUrls;
       }
 
+      // if (req.files && req.files.length > 0) {
+      //   const imageUrls = [];
+      //   for (const file of req.files) {
+      //     const result = await uploadToCloudinary(file, "events");
+      //     imageUrls.push(result.secure_url);
+      //   }
+      //   eventData.images = imageUrls;
+      // }
+
       // Lọc bỏ các trường undefined
-      Object.keys(eventData).forEach(key => 
-        eventData[key] === undefined && delete eventData[key]
+      Object.keys(eventData).forEach(
+        (key) => eventData[key] === undefined && delete eventData[key]
       );
 
       const updatedEvent = await EventService.updateEvent(
         req.params.eventId,
         req.id,
-        eventData
+        eventData,
+        newImageUrls,
+        imagesToDelete
       );
 
       res.status(200).json({
         success: true,
         message: "Event updated successfully",
-        data: updatedEvent
+        data: updatedEvent,
       });
     } catch (error) {
-      console.error('Error updating event:', error);
+      console.error("Error updating event:", error);
       res.status(500).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -118,11 +139,11 @@ class EventController {
     try {
       await EventService.deleteEvent(req.params.eventId, req.id);
       res.status(200).json({
-        message: "Event deleted successfully."
+        message: "Event deleted successfully.",
       });
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -133,7 +154,7 @@ class EventController {
       res.status(200).json(event);
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -144,7 +165,7 @@ class EventController {
       res.status(200).json(event);
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }

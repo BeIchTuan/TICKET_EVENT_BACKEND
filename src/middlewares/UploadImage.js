@@ -14,7 +14,7 @@ const fileFilter = (req, file, cb) => {
 
 const uploadImage = multer({
     storage: storage,
-    fileFilter: fileFilter,
+    //fileFilter: fileFilter,
     limits: {
         fileSize: 5 * 1024 * 1024, // Giới hạn 5MB
         files: 5 // Tối đa 5 file
