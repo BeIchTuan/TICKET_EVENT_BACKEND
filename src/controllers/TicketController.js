@@ -71,7 +71,7 @@ class TicketController {
         eventId: ticket.eventId,
         buyerId: ticket.buyerId,
         bookingCode: ticket.bookingCode,
-        qrCode: ticket.qrCode,
+        //qrCode: ticket.qrCode,
         status: ticket.status,
         paymentStatus: ticket.paymentStatus,
         paymentData: paymentResult,
@@ -311,32 +311,28 @@ class TicketController {
       }
 
       // Format lại dữ liệu trước khi trả về
-      const formattedTickets = user.ticketsBought.map(ticket => ({
-        id: ticket._id,
+      const formattedTickets = user.ticketsBought.map((ticket) => ({
+        _id: ticket._id,
         bookingCode: ticket.bookingCode,
         event: {
-          id: ticket.eventId._id,
+          _id: ticket.eventId._id,
           name: ticket.eventId.name,
           date: ticket.eventId.date,
           location: ticket.eventId.location,
           price: ticket.eventId.price,
-          banner: ticket.eventId.banner
+          banner: ticket.eventId.banner,
         },
         status: ticket.status,
         paymentStatus: ticket.paymentStatus,
         checkInTime: ticket.checkInTime,
-        qrCode: ticket.qrCode,
-        purchaseDate: ticket.createdAt
+        createAt: ticket.createdAt,
+        cancelReason: ticket.cancelReason,
+        paymentStatus: ticket.paymentStatus,
+        paymentData: ticket.paymentData,
+        //qrCode: ticket.qrCode,
       }));
 
-      res.status(200).json({
-        status: "success",
-        message: "Ticket history retrieved successfully",
-        data: {
-          tickets: formattedTickets,
-          total: formattedTickets.length
-        }
-      });
+      res.status(200).json(formattedTickets);
 
     } catch (error) {
       console.error('Get ticket history error:', error);

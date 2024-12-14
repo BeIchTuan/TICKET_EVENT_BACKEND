@@ -1,5 +1,4 @@
 const bcrypt = require("bcrypt");
-const { generalAccessToken } = require("./Jwtservice");
 const User = require("../models/UserModel");
 const Faculty = require("../models/FacultyModel");
 const University = require("../models/UniversityModel");
@@ -127,10 +126,9 @@ class UserService {
   async searchUsers(query, role, userId) {
     try {
       const filter = {
-        _id: { $ne: userId } // Exclude the user with userId
+        _id: { $ne: userId }, // Exclude the user with userId
       };
       console.log(userId);
-      
 
       if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
         filter.email = query;
