@@ -38,4 +38,9 @@ router.get('/history',
   TicketController.getTicketHistory
 );
 
+router.get('/:ticketId', 
+  authMiddleware(['ticket_buyer', 'event_creator']), 
+  TicketController.getTicketDetail
+);
+
 module.exports = router;

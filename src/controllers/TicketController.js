@@ -4,6 +4,7 @@ const Event = require('../models/EventModel');
 const Ticket = require('../models/TicketModel');
 const EmailService = require('../services/EmailService');
 const User = require('../models/UserModel');
+const mongoose = require('mongoose');
 
 class TicketController {
   static async bookTicket(req, res) {
@@ -339,6 +340,66 @@ class TicketController {
 
     } catch (error) {
       console.error('Get ticket history error:', error);
+      res.status(500).json({
+        status: "error",
+        message: error.message
+      });
+    }
+  }
+
+  static async getTicketDetail(req, res) {
+    try {
+      const { ticketId } = req.params;
+
+      // Tìm ticket và populate thông tin event và buyer
+      const ticket = await Ticket.findById(ticketId)
+        .populate({
+          path: 'eventId',
+          select: 'name description location date price images'
+        })
+        .populate({
+          path: 'buyerId',
+          select: 'name email'
+        });
+
+      if (!ticket) {
+        return res.status(404).json({
+          status: "error",
+          message: "Ticket not found"
+        });
+      }
+
+      res.status(200).json({
+        status: "success",
+        data: {
+          ticket: {
+            id: ticket._id,
+            bookingCode: ticket.bookingCode,
+            qrCode: ticket.qrCode,
+            status: ticket.status,
+            paymentStatus: ticket.paymentStatus,
+            event: {
+              id: ticket.eventId._id,
+              name: ticket.eventId.name,
+              description: ticket.eventId.description,
+              location: ticket.eventId.location,
+              date: ticket.eventId.date,
+              price: ticket.eventId.price,
+              images: ticket.eventId.images
+            },
+            buyer: {
+              id: ticket.buyerId._id,
+              name: ticket.buyerId.name,
+              email: ticket.buyerId.email
+            },
+            createdAt: ticket.createdAt,
+            checkInTime: ticket.checkInTime
+        }
+        }
+      });
+
+    } catch (error) {
+      console.error('Get ticket detail error:', error);
       res.status(500).json({
         status: "error",
         message: error.message
