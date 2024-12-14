@@ -6,6 +6,8 @@ const FacultyRouter = require('./FacultyRouter');
 const ticketRouter = require("./TicketRouter");
 const eventRouter = require('./EventRouter');
 const categoryRouter = require('./CategoryRouter');
+const conversationRouter = require('./ConversationRouter');
+const messageRouter = require('./MessageRouter');
 
 const routes = (app) => {
   app.use("/api/payment", paymentRoutes);
@@ -16,6 +18,8 @@ const routes = (app) => {
   app.use('/api/ticket', ticketRouter);
   app.use('/api/events', eventRouter);
   app.use('/api/categories', categoryRouter);
+  app.use('/api/conversations', conversationRouter)
+  app.use('/api/messages', messageRouter)
 };
 
 module.exports = routes;
