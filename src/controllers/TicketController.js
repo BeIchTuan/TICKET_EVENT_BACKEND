@@ -352,7 +352,7 @@ class TicketController {
       const ticket = await Ticket.findById(ticketId)
         .populate({
           path: 'eventId',
-          select: 'name description location date images'
+          select: 'name description location date images status'
         })
         .populate({
           path: 'buyerId',
