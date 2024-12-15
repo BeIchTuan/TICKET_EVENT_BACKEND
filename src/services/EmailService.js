@@ -112,6 +112,27 @@ class EmailService {
       throw new Error(`Failed to send email: ${error.message}`);
     }
   }
+
+  static async sendEmail({ to, subject, html }) {
+    try {
+      const mailOptions = {
+        from: {
+          name: 'Ticket Event System',
+          address: process.env.EMAIL_USER
+        },
+        to,
+        subject,
+        html
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log('Email sent:', info.messageId);
+      return info;
+    } catch (error) {
+      console.error('Error sending email:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = EmailService;

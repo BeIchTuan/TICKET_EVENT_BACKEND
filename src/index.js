@@ -5,8 +5,10 @@ const routes = require("./routes");
 const app = express();
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const initializeJobs = require('./jobs');
 //const cookieParser = require('cookie-parser');
 const cors = require("cors");
+
 
 dotenv.config();
 app.use(morgan("combined"));
@@ -48,6 +50,9 @@ mongoose.connect(uri)
     // Now, you can safely start your server and perform database operations
     app.listen(port, () => {
       console.log(`App listening on port ${port}`);
+
+      // Khởi động tất cả cron jobs
+      initializeJobs();
     });
   })
   .catch(err => {
