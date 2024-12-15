@@ -13,9 +13,22 @@ class EventController {
       console.log("User ID:", req.id);
       console.log("Request body:", req.body);
 
+      // Parse collaborators từ request body
+      let collaborators = [];
+      if (req.body.collaborators) {
+        collaborators = JSON.parse(req.body.collaborators);
+        if (!Array.isArray(collaborators)) {
+          return res.status(400).json({
+            success: false,
+            message: "Collaborators must be an array"
+          });
+        }
+      }
+
       const eventData = {
         ...req.body,
         createdBy: req.id,
+        collaborators: collaborators, // Thêm collaborators vào event data
         status: "active",
         isDeleted: false,
       };
@@ -40,21 +53,10 @@ class EventController {
         data: event,
       });
     } catch (error) {
-      console.log("Validation error:", error);
-
-      const errorDetails =
-        error.errInfo?.details?.schemaRulesNotSatisfied || [];
-      const formattedError = {
-        message: error.message,
-        validationErrors: errorDetails.map((detail) => ({
-          field: detail.propertyName,
-          reason: detail.description,
-        })),
-      };
-
+      console.log("Error:", error);
       res.status(400).json({
         success: false,
-        ...formattedError,
+        message: error.message
       });
     }
   }
@@ -87,7 +89,18 @@ class EventController {
           : undefined,
       };
 
-      // Xử lý upload ảnh mới (nếu có)
+      // Parse và thêm collaborators nếu có
+      if (req.body.collaborators) {
+        eventData.collaborators = JSON.parse(req.body.collaborators);
+        if (!Array.isArray(eventData.collaborators)) {
+          return res.status(400).json({
+            success: false,
+            message: "Collaborators must be an array"
+          });
+        }
+      }
+
+      // Xử lý upload ảnh mới và xóa ảnh cũ
       let newImageUrls = [];
       let imagesToDelete = req.body.imagesToDelete || []; // Danh sách ảnh cần xóa (nếu có)
 
