@@ -10,12 +10,12 @@ class MomoService {
       .digest("hex");
   }
 
-  static async createPayment(amount, orderInfo = "Payment for ticket") {
+  static async createPayment(amount, orderInfo = "Payment for ticket", redirectUrl = momoConfig.REDIRECT_URL) {
     const orderId = momoConfig.PARTNER_CODE + new Date().getTime();
     const requestId = orderId;
     const responseTime = 1734024385709;
 
-    const rawSignature = 
+    const rawSignature =
       "accessKey=" + momoConfig.ACCESS_KEY +
       "&amount=" + amount +
       "&extraData=" +
@@ -23,7 +23,7 @@ class MomoService {
       "&orderId=" + orderId +
       "&orderInfo=" + orderInfo +
       "&partnerCode=" + momoConfig.PARTNER_CODE +
-      "&redirectUrl=" + momoConfig.REDIRECT_URL +
+      "&redirectUrl=" + redirectUrl +
       "&requestId=" + requestId +
       "&requestType=captureWallet";
 
@@ -37,7 +37,7 @@ class MomoService {
       amount: amount,
       orderId: orderId,
       orderInfo: orderInfo,
-      redirectUrl: momoConfig.REDIRECT_URL,
+      redirectUrl: redirectUrl,
       ipnUrl: momoConfig.IPN_URL,
       lang: "vi",
       requestType: "captureWallet",

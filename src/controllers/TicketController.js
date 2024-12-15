@@ -54,7 +54,8 @@ class TicketController {
 
       // Nếu không phải vé miễn phí, xử lý thanh toán như bình thường
       const orderInfo = `Thanh toán vé sự kiện: ${event.name}`;
-      const paymentResult = await MomoService.createPayment(event.price, orderInfo);
+      const redirectUrl = `https://ticket-deeplink.vercel.app/ticket?detailId=${ticket._id}`
+      const paymentResult = await MomoService.createPayment(event.price, orderInfo, redirectUrl);
 
       // Cập nhật thông tin thanh toán vào vé
       await Ticket.findByIdAndUpdate(ticket._id, {
@@ -100,7 +101,7 @@ class TicketController {
       }
 
       await TicketService.cancelTicket(ticketId, userId, cancelReason);
-      
+
       res.status(200).json({
         message: "Ticket cancelled successfully."
       });
@@ -214,7 +215,7 @@ class TicketController {
       // Kiểm tra thời gian sự kiện
       const eventDate = new Date(ticket.eventId.date);
       const now = new Date();
-      
+
       //Khi nào cần chức năng này thì dùng
 
       // Cho phép check-in trước 1 giờ và sau khi sự kiện bắt đầu 1 giờ
@@ -258,10 +259,10 @@ class TicketController {
   static async handlePaymentCallback(req, res) {
     try {
       const { orderId, resultCode } = req.body;
-      
+
       // Tìm vé dựa trên orderId trong paymentData
       const ticket = await Ticket.findOne({ "paymentData.orderId": orderId });
-      
+
       if (!ticket) {
         throw new Error('Ticket not found');
       }
@@ -365,34 +366,7 @@ class TicketController {
         });
       }
 
-      res.status(200).json({
-        status: "success",
-        data: {
-          ticket: {
-            id: ticket._id,
-            bookingCode: ticket.bookingCode,
-            qrCode: ticket.qrCode,
-            status: ticket.status,
-            paymentStatus: ticket.paymentStatus,
-            event: {
-              id: ticket.eventId._id,
-              name: ticket.eventId.name,
-              description: ticket.eventId.description,
-              location: ticket.eventId.location,
-              date: ticket.eventId.date,
-              price: ticket.eventId.price,
-              images: ticket.eventId.images
-            },
-            buyer: {
-              id: ticket.buyerId._id,
-              name: ticket.buyerId.name,
-              email: ticket.buyerId.email
-            },
-            createdAt: ticket.createdAt,
-            checkInTime: ticket.checkInTime
-        }
-        }
-      });
+      res.status(200).json(ticket);
 
     } catch (error) {
       console.error('Get ticket detail error:', error);
