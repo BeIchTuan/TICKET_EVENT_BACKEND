@@ -352,12 +352,13 @@ class TicketController {
       const ticket = await Ticket.findById(ticketId)
         .populate({
           path: 'eventId',
-          select: 'name description location date price images'
+          select: 'name description location date images'
         })
         .populate({
           path: 'buyerId',
           select: 'name email'
-        });
+        })
+        .lean();
 
       if (!ticket) {
         return res.status(404).json({
@@ -365,6 +366,13 @@ class TicketController {
           message: "Ticket not found"
         });
       }
+
+      // Đổi tên các trường
+      ticket.event = ticket.eventId;
+      ticket.buyer = ticket.buyerId;
+      delete ticket.eventId;
+      delete ticket.buyerId;
+      delete ticket.qrCode;
 
       res.status(200).json(ticket);
 
