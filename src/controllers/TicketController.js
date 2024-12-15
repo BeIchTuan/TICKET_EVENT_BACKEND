@@ -237,6 +237,7 @@ class TicketController {
       // Cập nhật trạng thái vé
       ticket.status = 'checked-in';
       ticket.checkInTime = new Date();
+      ticket.checkedInBy = createdBy;
       await ticket.save();
 
       res.status(200).json({
@@ -247,7 +248,8 @@ class TicketController {
             id: ticket._id,
             eventName: ticket.eventId.name,
             buyerName: ticket.buyerId.name,
-            checkInTime: ticket.checkInTime
+            checkInTime: ticket.checkInTime,
+            checkedInBy: ticket.checkedInBy
           }
         }
       });

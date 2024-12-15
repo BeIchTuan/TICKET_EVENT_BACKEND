@@ -40,6 +40,10 @@ const ticketSchema = new Schema({
   paymentData: {
     type: Object,
     default: null
+  },
+  checkedInBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
   timestamps: true, // Tự động thêm createdAt và updatedAt
