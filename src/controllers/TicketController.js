@@ -189,8 +189,13 @@ class TicketController {
         });
       }
 
-      // Kiểm tra quyền của người tổ chức
-      if (ticket.eventId.createdBy.toString() !== createdBy) {
+      // Kiểm tra quyền check-in
+      const isOrganizer = ticket.eventId.createdBy._id.toString() === createdBy;
+      const isCollaborator = ticket.eventId.collaborators.some(
+        collaborator => collaborator._id.toString() === createdBy
+      );
+
+      if (!isOrganizer && !isCollaborator) {
         return res.status(403).json({
           status: "error",
           message: "You don't have permission to check-in this ticket"
