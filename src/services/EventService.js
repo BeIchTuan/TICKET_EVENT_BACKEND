@@ -162,8 +162,11 @@ class EventService {
           _id: eventId,
           createdBy: userId,
           isDeleted: false,
+          status: "active",
         },
-        { isDeleted: true },
+        { isDeleted: true, 
+          status: "canceled" 
+        },
         { new: true }
       );
 
