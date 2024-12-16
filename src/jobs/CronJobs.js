@@ -2,8 +2,7 @@ const cron = require('node-cron');
 const ReminderService = require('../services/ReminderService');
 
 const startEventReminderJob = () => {
-  console.log('Initializing event reminder cron job...');
-  cron.schedule('40 23 * * *', async () => {
+  cron.schedule('0 8 * * *', async () => {
     console.log('Running event reminder cron job...');
     try {
       await ReminderService.sendEventReminders();
@@ -12,6 +11,7 @@ const startEventReminderJob = () => {
       console.error('Error in event reminder job:', error);
     }
   });
+  console.log('Initialied event reminder cron job');
 };
 
 module.exports = startEventReminderJob;
