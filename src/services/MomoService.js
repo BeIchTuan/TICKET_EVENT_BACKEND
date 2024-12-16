@@ -88,7 +88,7 @@ class MomoService {
 
       return response.data;
     } catch (error) {
-      throw new Error('Lỗi khi kiểm tra trạng th��i giao dịch: ' + error.message);
+      throw new Error('Lỗi khi kiểm tra trạng thái giao dịch: ' + error.message);
     }
   }
 }
