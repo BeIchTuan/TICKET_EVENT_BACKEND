@@ -12,4 +12,10 @@ router.get(
   ConversationController.getConversationMessages
 );
 
+router.get(
+  "/",
+  authMiddleware(["event_creator", "admin", "ticket_buyer"]),
+  ConversationController.getConversations
+);
+
 module.exports = router;
