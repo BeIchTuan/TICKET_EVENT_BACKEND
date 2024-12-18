@@ -97,8 +97,8 @@ class UserController {
   }
 
   async searchUsers(req, res) {
-    const { query } = req.query; // Lấy query từ query string
-    const { role } = req.query; // Lấy role từ query string
+    const { query } = req.query; 
+    const { role } = req.query; 
     const userId = req.id;
     try {
       if (!query) {

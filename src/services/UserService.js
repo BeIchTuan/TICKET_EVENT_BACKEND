@@ -128,12 +128,11 @@ class UserService {
       const filter = {
         _id: { $ne: userId }, // Exclude the user with userId
       };
-      console.log(userId);
 
       if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
         filter.email = query;
       } else if (/^\d+$/.test(query)) {
-        filter.phone = query;
+        filter.$or = [{ phone: query }, { studentId: query }];
       } else {
         filter.name = { $regex: query, $options: "i" };
       }
