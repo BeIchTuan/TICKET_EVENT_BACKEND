@@ -123,26 +123,62 @@ class UserService {
     }
   }
 
+  // async searchUsers(query, role, userId) {
+  //   try {
+  //     const filter = {
+  //       _id: { $ne: userId }, // Exclude the user with userId
+  //     };
+
+  //     if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
+  //       filter.email = query;
+  //     } else if (/^\d+$/.test(query)) {
+  //       filter.$or = [{ phone: query }, { studentId: query }];
+  //     } else {
+  //       filter.name = { $regex: query, $options: "i" };
+  //     }
+
+  //     if (role) {
+  //       filter.role = role;
+  //     }
+
+  //     const users = await User.find(filter);
+
+  //     return users.map((user) => ({
+  //       _id: user._id,
+  //       name: user.name,
+  //       avatar: user.avatar || null,
+  //       studentId: user.studentId || null,
+  //     }));
+  //   } catch (error) {
+  //     throw new Error(error.message);
+  //   }
+  // }
+
   async searchUsers(query, role, userId) {
     try {
+      query = decodeURIComponent(query.replace(/\+/g, " "));
+  
       const filter = {
-        _id: { $ne: userId }, // Exclude the user with userId
+        _id: { $ne: userId }, 
       };
-
+  
       if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
-        filter.email = query;
+        filter.email = { $regex: query, $options: "i" };
       } else if (/^\d+$/.test(query)) {
-        filter.$or = [{ phone: query }, { studentId: query }];
+        filter.$or = [
+          { phone: { $regex: query, $options: "i" } },
+          { studentId: { $regex: query, $options: "i" } },
+        ];
       } else {
         filter.name = { $regex: query, $options: "i" };
       }
-
+  
       if (role) {
         filter.role = role;
       }
-
+  
       const users = await User.find(filter);
-
+  
       return users.map((user) => ({
         _id: user._id,
         name: user.name,
@@ -153,6 +189,7 @@ class UserService {
       throw new Error(error.message);
     }
   }
+  
 }
 
 module.exports = new UserService();
