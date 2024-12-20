@@ -1,6 +1,7 @@
 const Event = require("../models/EventModel");
 const User = require("../models/UserModel");
 const Category = require("../models/CategoryModel");
+const Conversation = require("../models/ConversationModel");
 const {
   deleteFromCloudinary,
   extractPublicId,
@@ -42,6 +43,12 @@ class EventService {
       if (eventData.maxAttendees < 0) {
         throw new Error("Maximum attendees must be positive");
       }
+
+      const newConversation = new Conversation({ members: [], title: eventData.name });
+      const savedConversation = await newConversation.save();
+
+      // Liên kết conversation với eventData
+      eventData.conversation = savedConversation._id;
 
       const event = new Event(eventData);
 
@@ -251,7 +258,7 @@ class EventService {
           _id: category._id,
           name: category.name,
         })),
-        categoryId: undefined, 
+        categoryId: undefined,
       }));
     } catch (error) {
       throw new Error("Error fetching managed events: " + error.message);

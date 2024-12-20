@@ -50,6 +50,10 @@ const eventSchema = new Schema({
     enum: ['active', 'completed', 'cancelled'],
     default: 'active'
   },
+  conversation: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'Conversation',
+  },
   isDeleted: {
     type: Boolean,
     default: false

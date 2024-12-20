@@ -5,7 +5,7 @@ const conversationSchema = new Schema(
   {
     title: { type: String },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    type: { type: String, enum: ["public", "private"] },
+    type: { type: String, enum: ["public", "private"], default: "public" },
     isDeleted: { type: Boolean, default: false },
   },
   {
