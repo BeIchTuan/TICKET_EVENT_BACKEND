@@ -241,17 +241,18 @@ class TicketController {
       await ticket.save();
 
       res.status(200).json({
-        status: "success",
-        message: "Check-in successful",
-        data: {
-          ticket: {
-            id: ticket._id,
-            eventName: ticket.eventId.name,
-            buyerName: ticket.buyerId.name,
-            checkInTime: ticket.checkInTime,
-            checkedInBy: ticket.checkedInBy
-          }
-        }
+        _id: ticket._id,
+        event: {
+          _id: ticket.eventId._id,
+          name: ticket.eventId.name,
+        },
+        buyer: {
+          _id: ticket.buyerId._id,
+          name: ticket.buyerId.name,
+          avatar: ticket.buyerId.name,
+        },
+        checkInTime: ticket.checkInTime,
+        checkedInBy: ticket.checkedInBy
       });
 
     } catch (error) {
