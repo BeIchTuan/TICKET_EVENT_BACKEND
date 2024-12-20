@@ -23,6 +23,9 @@ const userSchema = new Schema(
     ticketsBought: [{type: Schema.Types.ObjectId, ref: "Ticket"}],
     isDeleted: {type: Boolean, default: false},
     accessToken: { type: String },
+    fcmTokens: [{
+      type: String
+    }],
   },
   { collection: "user" }
 );
