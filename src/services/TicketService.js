@@ -197,6 +197,31 @@ class TicketService {
       throw error;
     }
   }
+
+  static async getTransferingTickets(userId) {
+    try {
+      const transferTickets = await TransferTicket.find({
+        $or: [
+          { fromUser: userId },
+        ],
+        status: 'pending' // Chỉ lấy các vé đang trong trạng thái pending
+      })
+      .populate('fromUser', '_id name avatar studentId')
+      .sort({ createdAt: -1 });
+
+      // Format lại dữ liệu theo yêu cầu
+      return transferTickets.map(transfer => ({
+        _id: transfer._id,
+        fromUser: transfer.fromUserId,
+        toUser: transfer.toUserId,
+        status: transfer.status
+      }));
+
+    } catch (error) {
+      console.error('Error in getTransferingTickets:', error);
+      throw new Error('Error getting transfering tickets: ' + error.message);
+    }
+  }
 }
 
 module.exports = TicketService;

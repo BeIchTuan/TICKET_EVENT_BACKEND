@@ -34,7 +34,7 @@ const ticketSchema = new Schema({
   },
   paymentStatus: { 
     type: String, 
-    enum: ['pending', 'paid', 'failed'],
+    enum: ['pending', 'paid', 'failed', 'transferred', 'transferring'],
     default: 'pending'
   },
   paymentData: {

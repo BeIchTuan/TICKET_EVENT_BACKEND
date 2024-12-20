@@ -8,6 +8,11 @@ router.post('/book',
   TicketController.bookTicket
 );
 
+router.get('/transferring-ticket', 
+  authMiddleware(['ticket_buyer']), 
+  TicketController.getTransferingTickets
+);
+
 router.delete('/:ticketId/cancel', 
   authMiddleware(['ticket_buyer']), 
   TicketController.cancelTicket
@@ -42,5 +47,7 @@ router.get('/:ticketId',
   authMiddleware(['ticket_buyer', 'event_creator']), 
   TicketController.getTicketDetail
 );
+
+
 
 module.exports = router;
