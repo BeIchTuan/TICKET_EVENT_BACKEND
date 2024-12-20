@@ -182,6 +182,18 @@ class EventController {
       });
     }
   }
+
+  static async getManagedEvents(req, res) {
+    try {
+      const userId = req.id; 
+      const events = await EventService.getManagedEvents(userId);
+
+      return res.status(200).json(events);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: 'Failed to retrieve managed events.' });
+    }
+  }
 }
 
 module.exports = EventController;

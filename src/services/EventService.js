@@ -164,9 +164,7 @@ class EventService {
           isDeleted: false,
           status: "active",
         },
-        { isDeleted: true, 
-          status: "canceled" 
-        },
+        { isDeleted: true, status: "canceled" },
         { new: true }
       );
 
@@ -228,6 +226,33 @@ class EventService {
         .populate("createdBy", "_id name");
     } catch (error) {
       throw error;
+    }
+  }
+
+  static async getManagedEvents(userId) {
+    try {
+      const events = await Event.find({
+        $or: [{ createdBy: userId }, { collaborators: userId }],
+        isDeleted: false,
+      })
+        .populate("createdBy", "_id name")
+        .populate({
+          path: "categoryId",
+          model: "Category",
+          select: "_id name",
+        })
+        .exec();
+
+      return events.map((event) => ({
+        ...event.toObject(),
+        category: event.categoryId.map((category) => ({
+          _id: category._id,
+          name: category.name,
+        })),
+        categoryId: undefined, 
+      }));
+    } catch (error) {
+      throw new Error("Error fetching managed events: " + error.message);
     }
   }
 }
