@@ -79,6 +79,7 @@ class EventService {
         .sort({ createdAt: -1 })
         .populate("categoryId", "name")
         .populate("createdBy", "name")
+        .populate("collaborators", "_id name")
         .exec()
         // đổi tên categoryId thành category trong data trả về
         .then((events) =>
@@ -235,7 +236,8 @@ class EventService {
         $or: [{ createdBy: userId }, { collaborators: userId }],
         isDeleted: false,
       })
-        .populate("createdBy", "_id name")
+        .populate("createdBy", "_id name avatar studentId")
+        .populate("collaborators", "_id name")
         .populate({
           path: "categoryId",
           model: "Category",

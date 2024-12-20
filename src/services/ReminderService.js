@@ -35,7 +35,7 @@ class ReminderService {
 
         for (const ticket of tickets) {
           try {
-            // T��o nội dung email
+            // Tạo nội dung email
             const emailContent = `
               <!DOCTYPE html>
               <html>
