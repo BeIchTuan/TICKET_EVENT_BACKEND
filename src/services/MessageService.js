@@ -1,4 +1,5 @@
 const Message = require("../models/MessageModel");
+const notificationService = require("../services/NotificationService");
 
 class MessageService {
   static async getMessagesByConversationId(conversationId, page, limit) {
@@ -16,7 +17,7 @@ class MessageService {
     }
   }
 
-  static async sendMessage(data) {
+  static async sendMessage(data, userId) {
     try {
       const newMessage = new Message({
         conversationId: data.conversationId,
@@ -25,7 +26,53 @@ class MessageService {
         parentMessageId: data.parentMessageId || null,
       });
 
-      return await newMessage.save();
+      await newMessage.save();
+
+      // Nếu là trả lời tin nhắn
+      if (data.parentMessageId) {
+        const parentMessage = await Message.findById(data.parentMessageId).populate(
+          "sender"
+        );
+
+        if (parentMessage) {
+          const originalSender = parentMessage.sender;
+
+          // Tránh gửi thông báo cho chính người trả lời
+          if (originalSender._id.toString() !== userId.toString()) {
+            const tokens = originalSender.fcmTokens?.filter(Boolean);
+
+            if (tokens?.length) {
+              const title = "New Reply to Your Comment";
+              const body = `Someone replied to your message: "${parentMessage.content}"`;
+              const notificationData = {
+                type: "comment_reply",
+                conversationId: data.conversationId,
+                // parentMessageId: data.parentMessageId,
+                // newMessageId: newMessage._id.toString(),
+              };
+
+              // Gửi thông báo
+              await notificationService.sendNotification(
+                tokens,
+                title,
+                body,
+                notificationData
+              );
+
+              // Lưu thông báo vào cơ sở dữ liệu
+              await notificationService.saveNotification(
+                originalSender._id,
+                "comment_reply",
+                title,
+                body,
+                notificationData
+              );
+            }
+          }
+        }
+      }
+
+      return newMessage;
     } catch (error) {
       throw new Error("Error sending message: " + error.message);
     }

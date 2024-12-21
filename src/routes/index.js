@@ -8,6 +8,7 @@ const eventRouter = require('./EventRouter');
 const categoryRouter = require('./CategoryRouter');
 const conversationRouter = require('./ConversationRouter');
 const messageRouter = require('./MessageRouter');
+const NotificationRouter = require('./NotificationRouter');
 
 const routes = (app) => {
   app.use("/api/payment", paymentRoutes);
@@ -20,6 +21,7 @@ const routes = (app) => {
   app.use('/api/categories', categoryRouter);
   app.use('/api/conversations', conversationRouter)
   app.use('/api/messages', messageRouter)
+  app.use('/api/notifications', NotificationRouter)
 };
 
 module.exports = routes;
