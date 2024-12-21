@@ -41,8 +41,8 @@ class TicketService {
     });
 
     await ticket.save();
-    ticket.populate('eventId', '_id name');
-    
+    ticket.populate("eventId", "_id name");
+
     // Cập nhật số lượng vé đã bán
     event.ticketsSold += 1;
     await event.save();
@@ -181,23 +181,39 @@ class TicketService {
         status: "pending",
       });
 
-      // Log transfer object trước khi save
-      console.log('Transfer object before save:', transfer.toObject());
-
-      // Validate transfer object
-      const validationError = transfer.validateSync();
-      if (validationError) {
-        console.error('Validation Error:', validationError);
-        throw validationError;
-      }
-
-      ticket.status = 'transferring';
+      ticket.paymentStatus = 'transferring';
 
       // Save riêng từng object để dễ debug
       await ticket.save();
       console.log('Ticket saved successfully');
       
       await transfer.save();
+
+      const buyer = await User.findById(toUserId);
+      if (!buyer) {
+        throw new Error("Buyer not found");
+      }
+  
+      const tokens = buyer.fcmTokens?.filter(Boolean);
+      if (tokens?.length) {
+        const title = "Ticket Transfering";
+        const body = `Someone would like to transfor a ticket for you.`;
+        const data = {
+          type: "ticket_transfer",
+          ticketId: ticket._id.toString(),
+        };
+  
+        await notificationService.sendNotification(tokens, title, body, data);
+  
+        await notificationService.saveNotification(
+          buyer._id,
+          "ticket_transfer",
+          title,
+          body,
+          data
+        );
+      }
+  
       return transfer;
     } catch (error) {
       console.error('Transfer error:', error);
@@ -214,12 +230,18 @@ class TicketService {
         ticket: ticketId,
         toUser: toUserId,
         status: "pending",
+      }).populate({
+        path: "fromUser",
+        select: "fcmTokens _id",
       });
 
       if (!transfer) throw new Error("Transfer request not found");
 
       const ticket = await Ticket.findById(ticketId);
       if (!ticket) throw new Error("Ticket not found");
+
+      // Lưu thông tin người sở hữu vé cũ
+      const oldOwner = transfer.fromUser;
 
       ticket.buyerId = toUserId;
       ticket.status = 'transferred';
@@ -230,6 +252,29 @@ class TicketService {
       await transfer.save({ session });
 
       await session.commitTransaction();
+
+      if (oldOwner?.fcmTokens?.length) {
+        const tokens = oldOwner.fcmTokens.filter(Boolean);
+        const title = "Ticket Transfer Successful";
+        const body = `Your ticket has been successfully transferred to the new owner.`;
+        const data = {
+          type: "ticket_transfer",
+          ticketId: ticketId.toString(),
+          newOwnerId: toUserId.toString(),
+        };
+
+        await notificationService.sendNotification(tokens, title, body, data);
+
+        // Lưu thông báo vào cơ sở dữ liệu
+        await notificationService.saveNotification(
+          oldOwner._id,
+          "ticket_transfer",
+          title,
+          body,
+          data
+        );
+      }
+
       return ticket;
     } catch (error) {
       await session.abortTransaction();
@@ -245,9 +290,12 @@ class TicketService {
 
     try {
       const transfer = await TransferTicket.findOne({
-        ticketId,
+        ticket: ticketId,
         toUser: userId,
         status: 'pending'
+      }).populate({
+        path: "fromUser",
+        select: "fcmTokens _id",
       });
 
       if (!transfer) throw new Error("Transfer request not found");
@@ -259,6 +307,32 @@ class TicketService {
       await ticket.save();
       transfer.status = 'cancelled';
       await transfer.save();
+
+      const oldOwner = transfer.fromUser;
+
+      console.log(oldOwner)
+
+      if (oldOwner?.fcmTokens?.length) {
+        const tokens = oldOwner.fcmTokens.filter(Boolean);
+        const title = "Ticket Transfer Reject";
+        const body = `Your ticket has been rejected!`;
+        const data = {
+          type: "ticket_transfer",
+          ticketId: ticketId.toString(),
+        };
+
+        await notificationService.sendNotification(tokens, title, body, data);
+
+        // Lưu thông báo vào cơ sở dữ liệu
+        await notificationService.saveNotification(
+          oldOwner._id,
+          "ticket_transfer",
+          title,
+          body,
+          data
+        );
+      }
+
       return transfer;
     } catch (error) {
       await session.abortTransaction();
@@ -300,28 +374,30 @@ class TicketService {
         $or: [
           { toUser: userId }, // Lấy các vé mà người dùng nhận được
         ],
-        status: 'pending' // Chỉ lấy các vé đang trong trạng thái pending
+        status: "pending", // Chỉ lấy các vé đang trong trạng thái pending
       })
-      .populate('ticket', '-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v')
-      .populate({
-        path: 'ticket',
-        populate: {
-          path: 'eventId',
-          select: 'name',
-          model: 'Event'
-        },
-        select: '-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v'
-      })
-      .populate('fromUser', '_id name avatar studentId')
-      .populate('toUser', '_id')
-      .sort({ createdAt: -1 });
+        .populate(
+          "ticket",
+          "-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v"
+        )
+        .populate({
+          path: "ticket",
+          populate: {
+            path: "eventId",
+            select: "name",
+            model: "Event",
+          },
+          select: "-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v",
+        })
+        .populate("fromUser", "_id name avatar studentId")
+        .populate("toUser", "_id")
+        .sort({ createdAt: -1 });
 
       // Format lại dữ liệu theo yêu cầu
       return transferTickets;
-
     } catch (error) {
-      console.error('Error in getTransferingTickets:', error);
-      throw new Error('Error getting transfering tickets: ' + error.message);
+      console.error("Error in getTransferingTickets:", error);
+      throw new Error("Error getting transfering tickets: " + error.message);
     }
   }
 }
