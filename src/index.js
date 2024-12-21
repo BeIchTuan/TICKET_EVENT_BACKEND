@@ -5,10 +5,10 @@ const routes = require("./routes");
 const app = express();
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const initializeJobs = require('./jobs');
-//const cookieParser = require('cookie-parser');
+const initializeJobs = require("./jobs");
 const cors = require("cors");
-
+const admin = require("firebase-admin");
+const serviceAccount = require("./serviceAccountKey.json");
 
 dotenv.config();
 app.use(morgan("combined"));
@@ -41,13 +41,21 @@ app.use(bodyParser.json());
 
 routes(app);
 
-app.get('/', (req, res) => {
-  res.send('Hello world!');
+// Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
+app.get("/", (req, res) => {
+  res.send("Hello world!");
 });
 
-mongoose.connect(uri)
+mongoose
+  .connect(uri)
   .then(() => {
-    console.log('Mongoose connected to MongoDB');
+    console.log("Mongoose connected to MongoDB");
     // Now, you can safely start your server and perform database operations
     app.listen(port, () => {
       console.log(`App listening on port ${port}`);
@@ -56,7 +64,6 @@ mongoose.connect(uri)
       initializeJobs();
     });
   })
-  .catch(err => {
-    console.error('Mongoose connection error:', err);
+  .catch((err) => {
+    console.error("Mongoose connection error:", err);
   });
-

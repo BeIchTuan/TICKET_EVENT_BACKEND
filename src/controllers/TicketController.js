@@ -1,10 +1,10 @@
-const TicketService = require('../services/TicketService');
-const MomoService = require('../services/MomoService');
-const Event = require('../models/EventModel');
-const Ticket = require('../models/TicketModel');
-const EmailService = require('../services/EmailService');
-const User = require('../models/UserModel');
-const mongoose = require('mongoose');
+const TicketService = require("../services/TicketService");
+const MomoService = require("../services/MomoService");
+const Event = require("../models/EventModel");
+const Ticket = require("../models/TicketModel");
+const EmailService = require("../services/EmailService");
+const User = require("../models/UserModel");
+const notificationService = require("../services/NotificationService");
 
 class TicketController {
   static async bookTicket(req, res) {
@@ -15,13 +15,13 @@ class TicketController {
       // Lấy thông tin sự kiện để biết giá vé
       const event = await Event.findById(eventId);
       if (!event) {
-        throw new Error('Event not found');
+        throw new Error("Event not found");
       }
 
       // Kiểm tra user tồn tại
       const user = await User.findById(buyerId);
       if (!user) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       // Đặt vé
@@ -30,22 +30,20 @@ class TicketController {
       // Kiểm tra nếu vé miễn phí (price = 0 hoặc null)
       if (!event.price || event.price === 0) {
         // Cập nhật trạng thái thanh toán thành công ngay lập tức
-        ticket.paymentStatus = 'paid';
+        ticket.paymentStatus = "paid";
         await ticket.save();
 
         // Thêm ticket vào ticketsBought của user
         user.ticketsBought.push(ticket._id);
         await user.save();
-        console.log('Added ticket to user ticketsBought:', buyerId);
-
-        
+        console.log("Added ticket to user ticketsBought:", buyerId);
 
         // Gửi email xác nhận ngay
         try {
           await EmailService.sendPaymentSuccessEmail(ticket);
-          console.log('Free ticket confirmation email sent');
+          console.log("Free ticket confirmation email sent");
         } catch (emailError) {
-          console.error('Error sending free ticket email:', emailError);
+          console.error("Error sending free ticket email:", emailError);
         }
 
         // Trả về thông tin vé khi đặt miễn phí
@@ -54,18 +52,22 @@ class TicketController {
 
       // Nếu không phải vé miễn phí, xử lý thanh toán như bình thường
       const orderInfo = `Thanh toán vé sự kiện: ${event.name}`;
-      const redirectUrl = `https://ticket-deeplink.vercel.app/ticket?detailId=${ticket._id}`
-      const paymentResult = await MomoService.createPayment(event.price, orderInfo, redirectUrl);
+      const redirectUrl = `https://ticket-deeplink.vercel.app/ticket?detailId=${ticket._id}`;
+      const paymentResult = await MomoService.createPayment(
+        event.price,
+        orderInfo,
+        redirectUrl
+      );
 
       // Cập nhật thông tin thanh toán vào vé
       await Ticket.findByIdAndUpdate(ticket._id, {
-        paymentData: paymentResult
+        paymentData: paymentResult,
       });
 
       // Thêm ticket vào ticketsBought của user
       user.ticketsBought.push(ticket._id);
       await user.save();
-      console.log('Added ticket to user ticketsBought:', buyerId);
+      console.log("Added ticket to user ticketsBought:", buyerId);
 
       res.status(201).json({
         _id: ticket._id,
@@ -82,7 +84,7 @@ class TicketController {
     } catch (error) {
       res.status(500).json({
         status: "error",
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -96,18 +98,18 @@ class TicketController {
       if (!cancelReason) {
         return res.status(400).json({
           status: "error",
-          message: "Reason is required for cancellation"
+          message: "Reason is required for cancellation",
         });
       }
 
       await TicketService.cancelTicket(ticketId, userId, cancelReason);
 
       res.status(200).json({
-        message: "Ticket cancelled successfully."
+        message: "Ticket cancelled successfully.",
       });
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -121,11 +123,11 @@ class TicketController {
       await TicketService.transferTicket(ticketId, currentOwnerId, newOwnerId);
 
       res.status(200).json({
-        message: "Ticket transfer initiated. Waiting for confirmation."
+        message: "Ticket transfer initiated. Waiting for confirmation.",
       });
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -138,11 +140,11 @@ class TicketController {
       await TicketService.confirmTransfer(ticketId, newOwnerId);
 
       res.status(200).json({
-        message: "Ticket transferred successfully."
+        message: "Ticket transferred successfully.",
       });
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -155,11 +157,11 @@ class TicketController {
       await TicketService.rejectTransfer(ticketId, userId);
 
       res.status(200).json({
-        message: "Ticket transfer rejected."
+        message: "Ticket transfer rejected.",
       });
     } catch (error) {
       res.status(500).json({
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -173,47 +175,47 @@ class TicketController {
       if (!bookingCode) {
         return res.status(400).json({
           status: "error",
-          message: "Booking code is required"
+          message: "Booking code is required",
         });
       }
 
       // Tìm vé với booking code
       const ticket = await Ticket.findOne({ bookingCode })
-        .populate('eventId')
-        .populate('buyerId');
+        .populate("eventId")
+        .populate("buyerId");
 
       if (!ticket) {
         return res.status(404).json({
           status: "error",
-          message: "Ticket not found"
+          message: "Ticket not found",
         });
       }
 
       // Kiểm tra quyền check-in
       const isOrganizer = ticket.eventId.createdBy._id.toString() === createdBy;
       const isCollaborator = ticket.eventId.collaborators.some(
-        collaborator => collaborator._id.toString() === createdBy
+        (collaborator) => collaborator._id.toString() === createdBy
       );
 
       if (!isOrganizer && !isCollaborator) {
         return res.status(403).json({
           status: "error",
-          message: "You don't have permission to check-in this ticket"
+          message: "You don't have permission to check-in this ticket",
         });
       }
 
       // Kiểm tra trạng thái vé
-      if (ticket.status === 'checked-in') {
+      if (ticket.status === "checked-in") {
         return res.status(400).json({
           status: "error",
-          message: "Ticket already checked-in"
+          message: "Ticket already checked-in",
         });
       }
 
-      if (ticket.paymentStatus !== 'paid') {
+      if (ticket.paymentStatus !== "paid") {
         return res.status(400).json({
           status: "error",
-          message: "Ticket payment not completed"
+          message: "Ticket payment not completed",
         });
       }
 
@@ -235,10 +237,32 @@ class TicketController {
       // }
 
       // Cập nhật trạng thái vé
-      ticket.status = 'checked-in';
+      ticket.status = "checked-in";
       ticket.checkInTime = new Date();
       ticket.checkedInBy = createdBy;
       await ticket.save();
+
+      if (ticket.buyerId?.fcmTokens?.length) {
+        const tokens = ticket.buyerId.fcmTokens.filter(Boolean);
+        const title = "Check-in Successfully";
+        const body = `Thanks for joining the event. Wish you have a great experience! 🎉`;
+        const data = {
+          type: "check_in",
+          ticketId: ticket._id.toString(),
+          eventId: ticket.eventId.toString(),
+        };
+
+        await notificationService.sendNotification(tokens, title, body, data);
+
+        // Lưu thông báo vào cơ sở dữ liệu
+        await notificationService.saveNotification(
+          ticket.buyerId._id,
+          "check_in",
+          title,
+          body,
+          data
+        );
+      }
 
       res.status(200).json({
         _id: ticket._id,
@@ -252,14 +276,13 @@ class TicketController {
           avatar: ticket.buyerId.name,
         },
         checkInTime: ticket.checkInTime,
-        checkedInBy: ticket.checkedInBy
+        checkedInBy: ticket.checkedInBy,
       });
-
     } catch (error) {
-      console.error('Check-in error:', error);
+      console.error("Check-in error:", error);
       res.status(500).json({
         status: "error",
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -272,21 +295,21 @@ class TicketController {
       const ticket = await Ticket.findOne({ "paymentData.orderId": orderId });
 
       if (!ticket) {
-        throw new Error('Ticket not found');
+        throw new Error("Ticket not found");
       }
 
       // Cập nhật trạng thái thanh toán
-      ticket.paymentStatus = resultCode === 0 ? 'paid' : 'failed';
+      ticket.paymentStatus = resultCode === 0 ? "paid" : "failed";
       await ticket.save();
 
       res.status(200).json({
         status: "success",
-        message: "Payment status updated"
+        message: "Payment status updated",
       });
     } catch (error) {
       res.status(500).json({
         status: "error",
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -296,26 +319,25 @@ class TicketController {
       const userId = req.id; // Lấy ID người dùng từ token
 
       // Tìm user và populate ticketsBought
-      const user = await User.findById(userId)
-        .populate({
-          path: 'ticketsBought',
-          populate: [
-            {
-              path: 'eventId',
-              select: 'name date location price description banner'
-            },
-            {
-              path: 'buyerId',
-              select: 'name email'
-            }
-          ],
-          options: { sort: { createdAt: -1 } } // Sắp xếp theo thời gian mua mới nhất
-        });
+      const user = await User.findById(userId).populate({
+        path: "ticketsBought",
+        populate: [
+          {
+            path: "eventId",
+            select: "name date location price description banner",
+          },
+          {
+            path: "buyerId",
+            select: "name email",
+          },
+        ],
+        options: { sort: { createdAt: -1 } }, // Sắp xếp theo thời gian mua mới nhất
+      });
 
       if (!user) {
         return res.status(404).json({
           status: "error",
-          message: "User not found"
+          message: "User not found",
         });
       }
 
@@ -342,12 +364,11 @@ class TicketController {
       }));
 
       res.status(200).json(formattedTickets);
-
     } catch (error) {
-      console.error('Get ticket history error:', error);
+      console.error("Get ticket history error:", error);
       res.status(500).json({
         status: "error",
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -359,19 +380,19 @@ class TicketController {
       // Tìm ticket và populate thông tin event và buyer
       const ticket = await Ticket.findById(ticketId)
         .populate({
-          path: 'eventId',
-          select: 'name description location date images status'
+          path: "eventId",
+          select: "name description location date images status",
         })
         .populate({
-          path: 'buyerId',
-          select: 'name email'
+          path: "buyerId",
+          select: "name email",
         })
         .lean();
 
       if (!ticket) {
         return res.status(404).json({
           status: "error",
-          message: "Ticket not found"
+          message: "Ticket not found",
         });
       }
 
@@ -383,12 +404,11 @@ class TicketController {
       delete ticket.qrCode;
 
       res.status(200).json(ticket);
-
     } catch (error) {
-      console.error('Get ticket detail error:', error);
+      console.error("Get ticket detail error:", error);
       res.status(500).json({
         status: "error",
-        message: error.message
+        message: error.message,
       });
     }
   }

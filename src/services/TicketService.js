@@ -1,14 +1,16 @@
-const Ticket = require('../models/TicketModel');
-const TransferTicket = require('../models/TransferTicketModel');
-const QRCode = require('qrcode');
-const crypto = require('crypto');
-const mongoose = require('mongoose');
-const Event = require('../models/EventModel');
-const { generateQRCode } = require('../utils/QRCodeGenerator');
+const Ticket = require("../models/TicketModel");
+const TransferTicket = require("../models/TransferTicketModel");
+const QRCode = require("qrcode");
+const crypto = require("crypto");
+const mongoose = require("mongoose");
+const Event = require("../models/EventModel");
+const { generateQRCode } = require("../utils/QRCodeGenerator");
+const notificationService = require("../services/NotificationService");
+const User = require("../models/UserModel");
 
 class TicketService {
   static generateBookingCode() {
-    return 'TICKET-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    return "TICKET-" + Math.random().toString(36).substr(2, 9).toUpperCase();
   }
 
   static async generateQRCode(bookingCode) {
@@ -18,12 +20,12 @@ class TicketService {
   static async bookTicket(eventId, buyerId) {
     const event = await Event.findById(eventId);
     if (!event) {
-      throw new Error('Event not found');
+      throw new Error("Event not found");
     }
 
     // Kiểm tra số lượng vé còn lại
     if (event.maxAttendees && event.ticketsSold >= event.maxAttendees) {
-      throw new Error('Event is fully booked');
+      throw new Error("Event is fully booked");
     }
 
     const bookingCode = this.generateBookingCode();
@@ -34,8 +36,8 @@ class TicketService {
       buyerId,
       bookingCode,
       qrCode,
-      status: 'booked',
-      paymentStatus: 'pending'
+      status: "booked",
+      paymentStatus: "pending",
     });
 
     await ticket.save();
@@ -45,74 +47,128 @@ class TicketService {
     event.ticketsSold += 1;
     await event.save();
 
+    const buyer = await User.findById(buyerId);
+    if (!buyer) {
+      throw new Error("Buyer not found");
+    }
+
+    const tokens = buyer.fcmTokens?.filter(Boolean);
+    if (tokens?.length) {
+      const title = "Ticket Booking Successful!";
+      const body = `You have successfully booked a ticket for the event: ${event.name}.`;
+      const data = {
+        type: "ticket_booking",
+        ticketId: ticket._id.toString(),
+      };
+
+      await notificationService.sendNotification(tokens, title, body, data);
+
+      // Lưu thông báo vào cơ sở dữ liệu
+      await notificationService.saveNotification(
+        buyer._id,
+        "ticket_booking",
+        title,
+        body,
+        data
+      );
+    }
+
     return ticket;
   }
 
   static async cancelTicket(ticketId, userId, reason) {
     const ticket = await Ticket.findById(ticketId);
-    
+
     if (!ticket) {
       throw new Error("Ticket not found");
     }
-    
+
     if (ticket.buyerId.toString() !== userId) {
       throw new Error("You are not authorized to cancel this ticket");
     }
-    
-    if (ticket.status === 'cancelled') {
+
+    if (ticket.status === "cancelled") {
       throw new Error("Ticket is already cancelled");
     }
-    
+
     // Cập nhật trạng thái và lý do hủy vé
-    ticket.status = 'cancelled';
+    ticket.status = "cancelled";
     ticket.cancelReason = reason;
     await ticket.save();
-    
+
     // Có thể thêm logic để cập nhật số lượng vé đã bán của sự kiện
     const event = await Event.findById(ticket.eventId);
     if (event) {
       event.ticketsSold = Math.max(0, event.ticketsSold - 1);
       await event.save();
     }
+
+    const buyer = await User.findById(userId);
+    if (!buyer) {
+      throw new Error("Buyer not found");
+    }
+
+    const tokens = buyer.fcmTokens?.filter(Boolean);
+    if (tokens?.length) {
+      const title = "Ticket Cancelled Successful!";
+      const body = `You have cancelled a ticket for the event: ${event.name}.`;
+      const data = {
+        type: "ticket_cancel",
+        ticketId: ticket._id.toString(),
+      };
+
+      await notificationService.sendNotification(tokens, title, body, data);
+
+      await notificationService.saveNotification(
+        buyer._id,
+        "ticket_cancel",
+        title,
+        body,
+        data
+      );
+    }
   }
 
   static async checkInTicket(ticketId) {
     try {
       const ticket = await Ticket.findById(ticketId);
-      if (!ticket) throw new Error('Ticket not found');
-      
-      if (ticket.status !== 'booked') 
-        throw new Error('Ticket is not valid for check-in');
+      if (!ticket) throw new Error("Ticket not found");
 
-      ticket.status = 'checked-in';
-      return await ticket.save();
+      if (ticket.status !== "booked")
+        throw new Error("Ticket is not valid for check-in");
+
+      ticket.status = "checked-in";
+      await ticket.save();
+
+      return ticket;
     } catch (error) {
       throw error;
     }
   }
 
   static async getTicketsByUser(buyerId) {
-    return await Ticket.find({ 
-      buyerId, 
-      isDeleted: false 
-    }).populate('eventId');
+    return await Ticket.find({
+      buyerId,
+      isDeleted: false,
+    }).populate("eventId");
   }
 
   static async transferTicket(ticketId, fromUserId, toUserId) {
     try {
-      const ticket = await Ticket.findOne({ 
-        _id: ticketId, 
+      const ticket = await Ticket.findOne({
+        _id: ticketId,
         buyerId: fromUserId,
-        status: 'booked'
+        status: "booked",
       });
-      
-      if (!ticket) throw new Error('Ticket not found or not available for transfer');
+
+      if (!ticket)
+        throw new Error("Ticket not found or not available for transfer");
 
       const transfer = new TransferTicket({
         ticket: ticketId,
         fromUser: fromUserId,
         toUser: toUserId,
-        status: 'pending'
+        status: "pending",
       });
 
       ticket.paymentStatus = 'transferring';
@@ -134,13 +190,13 @@ class TicketService {
       const transfer = await TransferTicket.findOne({
         ticket: ticketId,
         toUser: toUserId,
-        status: 'pending'
+        status: "pending",
       });
 
-      if (!transfer) throw new Error('Transfer request not found');
+      if (!transfer) throw new Error("Transfer request not found");
 
       const ticket = await Ticket.findById(ticketId);
-      if (!ticket) throw new Error('Ticket not found');
+      if (!ticket) throw new Error("Ticket not found");
 
       // Cập nhật người sở hữu mới
       ticket.buyerId = toUserId;
@@ -148,7 +204,7 @@ class TicketService {
       await ticket.save({ session });
 
       // Cập nhật trạng thái chuyển
-      transfer.status = 'success';
+      transfer.status = "success";
       await transfer.save({ session });
 
       await session.commitTransaction();
@@ -166,12 +222,12 @@ class TicketService {
       const transfer = await TransferTicket.findOne({
         ticketId,
         toUserId,
-        status: 'pending'
+        status: "pending",
       });
 
-      if (!transfer) throw new Error('Transfer request not found');
+      if (!transfer) throw new Error("Transfer request not found");
 
-      transfer.status = 'cancelled';
+      transfer.status = "cancelled";
       await transfer.save();
       return transfer;
     } catch (error) {
@@ -182,20 +238,21 @@ class TicketService {
   static async checkInByQR(qrCode) {
     try {
       const ticket = await Ticket.findOne({ qrCode });
-      
+
       if (!ticket) {
-        throw new Error('Invalid QR code or ticket not found');
+        throw new Error("Invalid QR code or ticket not found");
       }
 
-      if (ticket.status === 'cancelled') {
-        throw new Error('This ticket has been cancelled');
+      if (ticket.status === "cancelled") {
+        throw new Error("This ticket has been cancelled");
       }
 
-      if (ticket.status === 'checked-in') {
-        throw new Error('This ticket has already been checked in');
+      if (ticket.status === "checked-in") {
+        throw new Error("This ticket has already been checked in");
       }
 
-      ticket.status = 'checked-in';
+      ticket.status = "checked-in";
+
       await ticket.save();
 
       return ticket;

@@ -6,6 +6,7 @@ const {
   deleteFromCloudinary,
   extractPublicId,
 } = require("../utils/UploadImage");
+const notificationService = require("../services/NotificationService");
 const Ticket = require("../models/TicketModel");
 
 class EventService {
@@ -45,7 +46,10 @@ class EventService {
         throw new Error("Maximum attendees must be positive");
       }
 
-      const newConversation = new Conversation({ members: [], title: eventData.name });
+      const newConversation = new Conversation({
+        members: [],
+        title: eventData.name,
+      });
       const savedConversation = await newConversation.save();
 
       // Liên kết conversation với eventData
@@ -62,6 +66,36 @@ class EventService {
 
       console.log("Event before save:", event);
       const savedEvent = await event.save();
+
+      const users = await User.find({
+        role: { $in: ["ticket_buyer", "admin"] },
+      });
+
+      const tokens = users
+        .flatMap((user) => user.fcmTokens) 
+        .filter(Boolean); 
+
+      if (tokens.length) {
+        const title = "New Event Created!";
+        const body = `Check out the new event: ${eventData.name}`;
+        const data = {
+          type: "new_event",
+          eventId: savedEvent._id.toString(),
+        };
+
+        await notificationService.sendNotification(tokens, title, body, data);
+
+        for (const user of users) {
+          await notificationService.saveNotification(
+            user._id,
+            "new_event",
+            title,
+            body,
+            data
+          );
+        }
+      }
+
       return savedEvent;
     } catch (error) {
       console.log("Detailed error:", {
@@ -158,6 +192,36 @@ class EventService {
 
       Object.assign(event, updateData);
       await event.save();
+
+      const users = await User.find({
+        role: { $in: ["ticket_buyer", "admin"] },
+      });
+
+      const tokens = users
+        .flatMap((user) => user.fcmTokens) 
+        .filter(Boolean); 
+
+      if (tokens.length) {
+        const title = "The Event has been changed!";
+        const body = `Check out the new update event: ${event.name}`;
+        const data = {
+          type: "event_update",
+          eventId: event._id.toString(),
+        };
+
+        await notificationService.sendNotification(tokens, title, body, data);
+
+        for (const user of users) {
+          await notificationService.saveNotification(
+            user._id,
+            "event_update",
+            title,
+            body,
+            data
+          );
+        }
+      }
+
       return event;
     } catch (error) {
       throw error;
