@@ -249,7 +249,7 @@ class TicketController {
         const data = {
           type: "check_in",
           ticketId: ticket._id.toString(),
-          eventId: ticket.eventId.toString(),
+          eventId: ticket.eventId._id.toString(),
         };
 
         await notificationService.sendNotification(tokens, title, body, data);
