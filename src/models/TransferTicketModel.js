@@ -19,9 +19,8 @@ const transferTicketSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'success', 'rejected'],
-    default: 'pending',
-    required: true
+    enum: ['pending', 'success', 'cancelled'],
+    default: 'pending'
   }
 }, {
   timestamps: true,
