@@ -1,39 +1,53 @@
-const MessageService = require('../services/MessageService');
-const ConversationService = require('../services/ConversationService');
+const MessageService = require("../services/MessageService");
+const ConversationService = require("../services/ConversationService");
 
 class MessageController {
   static async sendMessage(req, res) {
     try {
       const { conversationId, content, parentMessageId } = req.body;
-
+      const userId = req.id;
       // Validate input
       if (!conversationId || !content) {
-        return res.status(400).json({ message: 'Conversation ID and content are required.' });
+        return res
+          .status(400)
+          .json({ message: "Conversation ID and content are required." });
       }
 
       // Verify the conversation exists
-      const conversation = await ConversationService.getConversationById(conversationId);
+      const conversation = await ConversationService.getConversationById(
+        conversationId
+      );
       if (!conversation) {
-        return res.status(404).json({ message: 'Conversation not found.' });
+        return res.status(404).json({ message: "Conversation not found." });
       }
 
       // Check if user is a member of a private conversation
-      if (conversation.type === 'private' && !conversation.members.includes(req.id)) {
-        return res.status(403).json({ message: 'You do not have access to this conversation.' });
+      if (
+        conversation.type === "private" &&
+        !conversation.members.includes(req.id)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "You do not have access to this conversation." });
       }
 
       // Send message
-      await MessageService.sendMessage({
-        conversationId,
-        content,
-        sender: req.id, 
-        parentMessageId: parentMessageId || null,
-      });
+      await MessageService.sendMessage(
+        {
+          conversationId,
+          content,
+          sender: req.id,
+          parentMessageId: parentMessageId || null,
+        },
+        userId
+      );
 
-      res.status(201).json({ message: 'Message sent successfully.' });
+      res.status(201).json({ message: "Message sent successfully." });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: 'An error occurred while sending the message.' });
+      res
+        .status(500)
+        .json({ message: "An error occurred while sending the message." });
     }
   }
 
