@@ -392,6 +392,20 @@ class TicketController {
       });
     }
   }
+
+  static async getTransferingTickets(req, res) {
+    try {
+      const userId = req.id;
+      const tickets = await TicketService.getTransferingTickets(userId);
+
+      return res.status(200).json(tickets);
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = TicketController;

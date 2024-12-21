@@ -39,6 +39,7 @@ class TicketService {
     });
 
     await ticket.save();
+    ticket.populate('eventId', '_id name');
     
     // Cập nhật số lượng vé đã bán
     event.ticketsSold += 1;
@@ -114,6 +115,10 @@ class TicketService {
         status: 'pending'
       });
 
+      ticket.paymentStatus = 'transferring';
+
+      await ticket.save();
+
       await transfer.save();
       return transfer;
     } catch (error) {
@@ -139,6 +144,7 @@ class TicketService {
 
       // Cập nhật người sở hữu mới
       ticket.buyerId = toUserId;
+      ticket.paymentStatus = "transferred";
       await ticket.save({ session });
 
       // Cập nhật trạng thái chuyển
@@ -195,6 +201,37 @@ class TicketService {
       return ticket;
     } catch (error) {
       throw error;
+    }
+  }
+
+  static async getTransferingTickets(userId) {
+    try {
+      const transferTickets = await TransferTicket.find({
+        $or: [
+          { toUser: userId }, // Lấy các vé mà người dùng nhận được
+        ],
+        status: 'pending' // Chỉ lấy các vé đang trong trạng thái pending
+      })
+      .populate('ticket', '-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v')
+      .populate({
+        path: 'ticket',
+        populate: {
+          path: 'eventId',
+          select: 'name',
+          model: 'Event'
+        },
+        select: '-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v'
+      })
+      .populate('fromUser', '_id name avatar studentId')
+      .populate('toUser', '_id')
+      .sort({ createdAt: -1 });
+
+      // Format lại dữ liệu theo yêu cầu
+      return transferTickets;
+
+    } catch (error) {
+      console.error('Error in getTransferingTickets:', error);
+      throw new Error('Error getting transfering tickets: ' + error.message);
     }
   }
 }
