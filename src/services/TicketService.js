@@ -176,6 +176,32 @@ class TicketService {
       await ticket.save();
 
       await transfer.save();
+
+      const buyer = await User.findById(toUserId);
+      if (!buyer) {
+        throw new Error("Buyer not found");
+      }
+  
+      const tokens = buyer.fcmTokens?.filter(Boolean);
+      if (tokens?.length) {
+        const title = "Ticket Transfering";
+        const body = `Someone would like to transfor a ticket for you.`;
+        const data = {
+          type: "ticket_transfer",
+          ticketId: ticket._id.toString(),
+        };
+  
+        await notificationService.sendNotification(tokens, title, body, data);
+  
+        await notificationService.saveNotification(
+          buyer._id,
+          "ticket_transfer",
+          title,
+          body,
+          data
+        );
+      }
+  
       return transfer;
     } catch (error) {
       throw error;
