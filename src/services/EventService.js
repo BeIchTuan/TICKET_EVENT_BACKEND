@@ -6,6 +6,7 @@ const {
   deleteFromCloudinary,
   extractPublicId,
 } = require("../utils/UploadImage");
+const Ticket = require("../models/TicketModel");
 
 class EventService {
   static async createEvent(eventData) {
@@ -264,6 +265,29 @@ class EventService {
       throw new Error("Error fetching managed events: " + error.message);
     }
   }
+
+  static async getEventParticipants(eventId) {
+    try {
+      // Tìm tất cả vé đã book thành công cho sự kiện này
+      const tickets = await Ticket.find({
+        eventId: eventId,
+        status: 'booked',
+        paymentStatus: { $in: ['paid', 'transferred'] }  // Chỉ lấy vé đã thanh toán hoặc đã chuyển nhượng
+      }).populate('buyerId', 'name email phone'); // Lấy thông tin người mua vé
+      
+      // Trích xuất thông tin người tham gia từ tickets
+      const participants = tickets.map(ticket => ({
+        ticketId: ticket._id,
+        participant: ticket.buyerId,
+        ticketType: ticket.ticketType,
+        purchaseDate: ticket.createdAt
+      }));
+       return participants;
+    } catch (error) {
+      throw error;
+    }
+  }
+   
 }
 
 module.exports = EventService;

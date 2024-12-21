@@ -4,6 +4,7 @@ const EventController = require("../controllers/EventController");
 const upload = require("../middlewares/UploadImage");
 const { authMiddleware } = require("../middlewares/AuthMiddleware");
 const filterNullValues = require("../middlewares/FilterNullValues");
+const TicketController = require("../controllers/TicketController");
 
 router.get(
   "/management",
@@ -22,6 +23,11 @@ router.post(
   authMiddleware(["event_creator", "admin"]),
   upload.array("images", 10),
   EventController.createEvent
+);
+
+router.get('/:eventId/participants',
+  authMiddleware(["event_creator"]),
+  EventController.getEventParticipants
 );
 
 router.put(
