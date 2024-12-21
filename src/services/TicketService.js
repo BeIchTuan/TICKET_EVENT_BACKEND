@@ -114,6 +114,10 @@ class TicketService {
         status: 'pending'
       });
 
+      ticket.paymentStatus = 'transferring';
+
+      await ticket.save();
+
       await transfer.save();
       return transfer;
     } catch (error) {
@@ -139,6 +143,7 @@ class TicketService {
 
       // Cập nhật người sở hữu mới
       ticket.buyerId = toUserId;
+      ticket.paymentStatus = "transferred";
       await ticket.save({ session });
 
       // Cập nhật trạng thái chuyển
