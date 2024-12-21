@@ -26,29 +26,31 @@ class PaymentController {
       console.log("Looking for ticket with orderId:", orderId);
       const ticket = await Ticket.findOne({ "paymentData.orderId": orderId });
       console.log("Found ticket:", ticket);
-      
+
       if (!ticket) {
         console.log("No ticket found for orderId:", orderId);
         return res.status(404).json({
           success: false,
-          message: "Không tìm thấy vé với orderId này"
+          message: "Không tìm thấy vé với orderId này",
         });
       }
 
       // Cập nhật trạng thái thanh toán
       const oldStatus = ticket.paymentStatus;
-      ticket.paymentStatus = resultCode === 0 ? 'paid' : 'failed';
+      ticket.paymentStatus = resultCode === 0 ? "paid" : "failed";
       await ticket.save();
-      console.log(`Updated payment status from ${oldStatus} to ${ticket.paymentStatus}`);
+      console.log(
+        `Updated payment status from ${oldStatus} to ${ticket.paymentStatus}`
+      );
 
       // Gửi email nếu thanh toán thành công
       if (resultCode === 0) {
         try {
           console.log("Attempting to send success email...");
           await EmailService.sendPaymentSuccessEmail(ticket);
-          console.log('Payment success email sent');
+          console.log("Payment success email sent");
         } catch (emailError) {
-          console.error('Error sending payment success email:', emailError);
+          console.error("Error sending payment success email:", emailError);
           console.error(emailError.stack);
         }
       }
@@ -60,14 +62,14 @@ class PaymentController {
         data: {
           ticketId: ticket._id,
           paymentStatus: ticket.paymentStatus,
-          momoMessage: message
-        }
+          momoMessage: message,
+        },
       });
     } catch (error) {
-      console.error('Payment callback error:', error);
+      console.error("Payment callback error:", error);
       return res.status(500).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -75,30 +77,63 @@ class PaymentController {
   static async checkTransactionStatus(req, res) {
     try {
       const { orderId } = req.body;
-      
+
       if (!orderId) {
         return res.status(400).json({
           success: false,
-          message: "orderId is required"
+          message: "orderId is required",
         });
       }
 
       const result = await MomoService.checkTransactionStatus(orderId);
-      const ticket = await Ticket.findOne({ "paymentData.orderId": orderId });
-      
+      const ticket = await Ticket.findOne({
+        "paymentData.orderId": orderId,
+      }).populate({
+        path: "buyerId",
+        select: "fcmTokens _id",
+      });
+
       if (ticket) {
-        const newPaymentStatus = result.resultCode === 0 ? 'paid' : 'failed';
-        
+        const newPaymentStatus = result.resultCode === 0 ? "paid" : "failed";
+
         // Chỉ gửi email nếu trạng thái thay đổi từ pending sang paid
-        if (ticket.paymentStatus !== 'paid' && newPaymentStatus === 'paid') {
+        if (ticket.paymentStatus !== "paid" && newPaymentStatus === "paid") {
           try {
             await EmailService.sendPaymentSuccessEmail(ticket);
-            console.log('Payment success email sent');
+            console.log("Payment success email sent");
+
+            // Gửi thông báo qua FCM
+            if (ticket.buyerId?.fcmTokens?.length) {
+              const tokens = ticket.buyerId.fcmTokens.filter(Boolean);
+              const title = "Payment Successful";
+              const body = `Your ticket for order ${orderId} has been successfully paid. 🎉`;
+              const data = {
+                type: "payment_success",
+                ticketId: ticket._id.toString(),
+                orderId: orderId.toString(),
+              };
+
+              console.log("Attempting to send success notification...");
+              await NotificationService.sendNotification(
+                tokens,
+                title,
+                body,
+                data
+              );
+
+              await NotificationService.saveNotification(
+                ticket.buyerId._id,
+                "payment_success",
+                title,
+                body,
+                data
+              );
+            }
           } catch (emailError) {
-            console.error('Error sending payment success email:', emailError);
+            console.error("Error sending payment success email:", emailError);
           }
         }
-        
+
         ticket.paymentStatus = newPaymentStatus;
         await ticket.save();
       }
@@ -107,8 +142,8 @@ class PaymentController {
         success: true,
         data: {
           ...result,
-          ticketStatus: ticket ? ticket.paymentStatus : null
-        }
+          ticketStatus: ticket ? ticket.paymentStatus : null,
+        },
       });
     } catch (error) {
       return res.status(500).json({
