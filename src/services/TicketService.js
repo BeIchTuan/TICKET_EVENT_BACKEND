@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Event = require('../models/EventModel');
 const { generateQRCode } = require('../utils/QRCodeGenerator');
+const User = require('../models/UserModel');
 
 class TicketService {
   static generateBookingCode() {
@@ -99,13 +100,41 @@ class TicketService {
 
   static async transferTicket(ticketId, fromUserId, toUserId) {
     try {
+      // Log input data
+      console.log('Transfer Input:', { ticketId, fromUserId, toUserId });
+
+      // Kiểm tra tính hợp lệ của các ID
+      if (!mongoose.Types.ObjectId.isValid(ticketId)) {
+        throw new Error('Invalid ticketId format');
+      }
+      if (!mongoose.Types.ObjectId.isValid(fromUserId)) {
+        throw new Error('Invalid fromUserId format');
+      }
+      if (!mongoose.Types.ObjectId.isValid(toUserId)) {
+        throw new Error('Invalid toUserId format');
+      }
+
       const ticket = await Ticket.findOne({ 
         _id: ticketId, 
         buyerId: fromUserId,
         status: 'booked'
       });
       
+      // Log ticket found
+      console.log('Found ticket:', ticket);
+      
       if (!ticket) throw new Error('Ticket not found or not available for transfer');
+
+      // Kiểm tra người nhận tồn tại
+      const toUser = await User.findById(toUserId);
+      console.log('To User:', toUser);
+      
+      if (!toUser) throw new Error('Recipient user not found');
+
+      // Kiểm tra không tự chuyển cho chính mình
+      if (fromUserId.toString() === toUserId.toString()) {
+        throw new Error('Cannot transfer ticket to yourself');
+      }
 
       const transfer = new TransferTicket({
         ticket: ticketId,
@@ -114,13 +143,28 @@ class TicketService {
         status: 'pending'
       });
 
-      ticket.paymentStatus = 'transferring';
+      // Log transfer object trước khi save
+      console.log('Transfer object before save:', transfer.toObject());
 
+      // Validate transfer object
+      const validationError = transfer.validateSync();
+      if (validationError) {
+        console.error('Validation Error:', validationError);
+        throw validationError;
+      }
+
+      ticket.status = 'transferring';
+
+      // Save riêng từng object để dễ debug
       await ticket.save();
-
+      console.log('Ticket saved successfully');
+      
       await transfer.save();
+      console.log('Transfer saved successfully');
+      
       return transfer;
     } catch (error) {
+      console.error('Transfer error:', error);
       throw error;
     }
   }
@@ -141,12 +185,10 @@ class TicketService {
       const ticket = await Ticket.findById(ticketId);
       if (!ticket) throw new Error('Ticket not found');
 
-      // Cập nhật người sở hữu mới
       ticket.buyerId = toUserId;
-      ticket.paymentStatus = "transferred";
+      ticket.status = 'transferred';
       await ticket.save({ session });
 
-      // Cập nhật trạng thái chuyển
       transfer.status = 'success';
       await transfer.save({ session });
 
@@ -160,21 +202,35 @@ class TicketService {
     }
   }
 
-  static async rejectTransfer(ticketId, toUserId) {
+  static async rejectTransfer(ticketId, userId) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       const transfer = await TransferTicket.findOne({
-        ticketId,
-        toUserId,
+        ticket: ticketId,
+        toUser: userId,
         status: 'pending'
       });
 
       if (!transfer) throw new Error('Transfer request not found');
 
-      transfer.status = 'cancelled';
-      await transfer.save();
-      return transfer;
+      const ticket = await Ticket.findById(ticketId);
+      if (!ticket) throw new Error('Ticket not found');
+
+      ticket.status = 'booked';
+      await ticket.save({ session });
+
+      transfer.status = 'rejected';
+      await transfer.save({ session });
+
+      await session.commitTransaction();
+      return ticket;
     } catch (error) {
+      await session.abortTransaction();
       throw error;
+    } finally {
+      session.endSession();
     }
   }
 

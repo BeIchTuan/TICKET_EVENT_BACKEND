@@ -19,8 +19,9 @@ const transferTicketSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'success', 'cancelled'],
-    default: 'pending'
+    enum: ['pending', 'success', 'rejected'],
+    default: 'pending',
+    required: true
   }
 }, {
   timestamps: true,
@@ -40,6 +41,12 @@ transferTicketSchema.index(
     partialFilterExpression: { status: 'pending' }
   }
 );
+
+// Thêm middleware pre-save để log
+transferTicketSchema.pre('save', function(next) {
+  console.log('Saving transfer ticket:', this.toObject());
+  next();
+});
 
 const TransferTicket = mongoose.model('TransferTicket', transferTicketSchema);
 

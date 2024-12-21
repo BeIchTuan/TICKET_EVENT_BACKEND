@@ -24,7 +24,7 @@ const ticketSchema = new Schema({
   },
   status: { 
     type: String, 
-    enum: ['booked', 'cancelled', 'checked-in'],
+    enum: ['booked', 'cancelled', 'checked-in', 'transferring', 'transferred'],
     default: 'booked'
   },
   cancelReason: String,
@@ -34,7 +34,7 @@ const ticketSchema = new Schema({
   },
   paymentStatus: { 
     type: String, 
-    enum: ['pending', 'paid', 'failed', 'transferred', 'transferring'],
+    enum: ['pending', 'paid', 'failed'],
     default: 'pending'
   },
   paymentData: {
