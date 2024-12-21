@@ -1,6 +1,5 @@
 const admin = require("firebase-admin");
-const schedule = require("node-schedule");
-const Notification = require("../models/NotificationModel")
+const Notification = require("../models/NotificationModel");
 
 const serviceAccount = require("../serviceAccountKey.json");
 
@@ -37,24 +36,6 @@ class NotificationService {
     }
   }
 
-  async scheduleNotification(tokens, title, body, data, scheduleTime) {
-    const date = new Date(scheduleTime);
-    if (isNaN(date.getTime())) {
-      throw new Error("Invalid schedule time");
-    }
-
-    schedule.scheduleJob(date, async () => {
-      try {
-        await this.sendNotification(tokens, title, body, data);
-        console.log(`Notification sent at ${new Date().toISOString()}`);
-      } catch (error) {
-        console.error("Error sending scheduled notification:", error);
-      }
-    });
-
-    return { scheduleTime: date.toISOString() };
-  }
-
   async saveNotification(userId, type, title, body, data) {
     const notification = new Notification({
       receiptId: userId,
@@ -64,6 +45,41 @@ class NotificationService {
       data,
     });
     return notification.save();
+  }
+
+  async getAllNotifications(userId) {
+    try {
+      return await Notification.find({ receiptId: userId }).sort({
+        createdAt: -1,
+      });
+    } catch (error) {
+      throw new Error("Failed to fetch notifications: " + error.message);
+    }
+  }
+
+  async markAsRead(userId, notificationId) {
+    try {
+      return await Notification.findOneAndUpdate(
+        { _id: notificationId, receiptId: userId },
+        { isRead: true },
+        { new: true }
+      );
+    } catch (error) {
+      throw new Error("Failed to mark notification as read: " + error.message);
+    }
+  }
+
+  async markAllAsRead(userId) {
+    try {
+      return await Notification.updateMany(
+        { receiptId: userId, isRead: false },
+        { isRead: true }
+      );
+    } catch (error) {
+      throw new Error(
+        "Failed to mark all notifications as read: " + error.message
+      );
+    }
   }
 }
 
