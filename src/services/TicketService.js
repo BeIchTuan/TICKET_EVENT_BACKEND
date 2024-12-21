@@ -39,6 +39,7 @@ class TicketService {
     });
 
     await ticket.save();
+    ticket.populate('eventId', '_id name');
     
     // Cập nhật số lượng vé đã bán
     event.ticketsSold += 1;
@@ -207,20 +208,26 @@ class TicketService {
     try {
       const transferTickets = await TransferTicket.find({
         $or: [
-          { fromUser: userId },
+          { toUser: userId }, // Lấy các vé mà người dùng nhận được
         ],
         status: 'pending' // Chỉ lấy các vé đang trong trạng thái pending
       })
+      .populate('ticket', '-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v')
+      .populate({
+        path: 'ticket',
+        populate: {
+          path: 'eventId',
+          select: 'name',
+          model: 'Event'
+        },
+        select: '-qrCode -paymentData -isDeleted -createdAt -updatedAt -__v'
+      })
       .populate('fromUser', '_id name avatar studentId')
+      .populate('toUser', '_id')
       .sort({ createdAt: -1 });
 
       // Format lại dữ liệu theo yêu cầu
-      return transferTickets.map(transfer => ({
-        _id: transfer._id,
-        fromUser: transfer.fromUserId,
-        toUser: transfer.toUserId,
-        status: transfer.status
-      }));
+      return transferTickets;
 
     } catch (error) {
       console.error('Error in getTransferingTickets:', error);
