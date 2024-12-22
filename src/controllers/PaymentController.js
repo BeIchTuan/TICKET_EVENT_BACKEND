@@ -1,6 +1,7 @@
 const MomoService = require("../services/MomoService");
 const Ticket = require("../models/TicketModel");
 const EmailService = require("../services/EmailService");
+const NotificationService = require("../services/NotificationService");
 
 class PaymentController {
   static async createPayment(req, res) {
@@ -113,7 +114,6 @@ class PaymentController {
                 orderId: orderId.toString(),
               };
 
-              console.log("Attempting to send success notification...");
               await NotificationService.sendNotification(
                 tokens,
                 title,
