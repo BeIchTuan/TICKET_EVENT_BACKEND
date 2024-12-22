@@ -121,6 +121,7 @@ class EventService {
         .sort({ createdAt: -1 })
         .populate("categoryId", "name")
         .populate("createdBy", "name")
+        .populate("conversation", "_id title")
         .populate("collaborators", "_id name")
         .exec()
         // đổi tên categoryId thành category trong data trả về
@@ -253,6 +254,7 @@ class EventService {
       const event = await Event.findOne({ _id: eventId, isDeleted: false })
         .populate("collaborators", "_id name avatar studentId")
         .populate("createdBy", "_id name avatar studentId")
+        .populate("conversation", "_id title")
         .populate({
           path: "createdBy",
           select: "_id name avatar studentId",
@@ -296,7 +298,7 @@ class EventService {
 
       return await Event.find(query)
         .populate("categoryId", "name")
-        .populate("createdBy", "_id name");
+        .populate("createdBy", "_id name avatar studentId");
     } catch (error) {
       throw error;
     }

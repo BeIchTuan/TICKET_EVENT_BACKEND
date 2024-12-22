@@ -10,7 +10,8 @@ class MessageService {
         .sort({ time: -1 })
         .skip(skip)
         .limit(parseInt(limit, 10))
-        .select("-__v")
+        .select("-__v -conversationId -isDeleted -updatedAt -createdAt")
+        .populate("sender", "_id name avatar")
         .lean();
     } catch (error) {
       throw new Error("Error fetching messages: " + error.message);
@@ -72,7 +73,12 @@ class MessageService {
         }
       }
 
-      return newMessage;
+      const savedMessage = await Message.findById(newMessage._id)
+        .select("-__v -conversationId -isDeleted -updatedAt -createdAt")
+        .populate("sender", "_id name avatar")
+        .lean();
+
+      return savedMessage;
     } catch (error) {
       throw new Error("Error sending message: " + error.message);
     }

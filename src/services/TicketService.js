@@ -181,7 +181,7 @@ class TicketService {
         status: "pending",
       });
 
-      ticket.paymentStatus = 'transferring';
+      ticket.status = 'transferring';
 
       // Save riêng từng object để dễ debug
       await ticket.save();

@@ -32,7 +32,7 @@ class MessageController {
       }
 
       // Send message
-      await MessageService.sendMessage(
+      const newMessage = await MessageService.sendMessage(
         {
           conversationId,
           content,
@@ -42,7 +42,7 @@ class MessageController {
         userId
       );
 
-      res.status(201).json({ message: "Message sent successfully." });
+      res.status(201).json(newMessage);
     } catch (error) {
       console.error(error);
       res
