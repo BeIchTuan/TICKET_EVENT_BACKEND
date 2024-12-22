@@ -49,9 +49,11 @@ class NotificationService {
 
   async getAllNotifications(userId) {
     try {
-      return await Notification.find({ receiptId: userId }).sort({
-        createdAt: -1,
-      });
+      return await Notification.find({ receiptId: userId })
+        .select("-__v -receiptId")
+        .sort({
+          createdAt: -1,
+        });
     } catch (error) {
       throw new Error("Failed to fetch notifications: " + error.message);
     }

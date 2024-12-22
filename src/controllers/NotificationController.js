@@ -15,13 +15,9 @@ class NotificationController {
 
   async getAllNotifications(req, res) {
     try {
-      const userId = req.id; 
+      const userId = req.id;
       const notifications = await NotificationService.getAllNotifications(userId);
-      res.status(200).json({
-        success: true,
-        message: "Fetched all notifications successfully",
-        data: notifications,
-      });
+      res.status(200).json(notifications);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -29,7 +25,7 @@ class NotificationController {
 
   async markAsRead(req, res) {
     try {
-      const userId = req.id; 
+      const userId = req.id;
       const { notificationId } = req.params;
 
       const notification = await NotificationService.markAsRead(userId, notificationId);
@@ -50,7 +46,7 @@ class NotificationController {
 
   async markAllAsRead(req, res) {
     try {
-      const userId = req.id; 
+      const userId = req.id;
       await NotificationService.markAllAsRead(userId);
       res.status(200).json({
         success: true,
