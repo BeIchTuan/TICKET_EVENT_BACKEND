@@ -229,52 +229,42 @@ class TicketService {
       const transfer = await TransferTicket.findOne({
         ticket: ticketId,
         toUser: toUserId,
-        status: "pending",
-      }).populate({
-        path: "fromUser",
-        select: "fcmTokens _id",
-      });
+        status: 'pending'
+      }).populate('fromUser');
 
-      if (!transfer) throw new Error("Transfer request not found");
+      if (!transfer) throw new Error('Transfer request not found');
 
       const ticket = await Ticket.findById(ticketId);
-      if (!ticket) throw new Error("Ticket not found");
+      if (!ticket) throw new Error('Ticket not found');
 
-      // Lưu thông tin người sở hữu vé cũ
-      const oldOwner = transfer.fromUser;
+      // Tìm người nhận vé
+      const toUser = await User.findById(toUserId);
+      if (!toUser) throw new Error('Recipient user not found');
 
+      // Xóa ticket khỏi ticketsBought của người chuyển
+      await User.findByIdAndUpdate(
+        transfer.fromUser._id,
+        { $pull: { ticketsBought: ticketId } },
+        { session }
+      );
+
+      // Thêm ticket vào ticketsBought của người nhận
+      await User.findByIdAndUpdate(
+        toUserId,
+        { $push: { ticketsBought: ticketId } },
+        { session }
+      );
+
+      // Cập nhật thông tin vé
       ticket.buyerId = toUserId;
       ticket.status = 'transferred';
       await ticket.save({ session });
 
-      // Cập nhật trạng thái chuyển
+      // Cập nhật trạng thái transfer
       transfer.status = 'success';
       await transfer.save({ session });
 
       await session.commitTransaction();
-
-      if (oldOwner?.fcmTokens?.length) {
-        const tokens = oldOwner.fcmTokens.filter(Boolean);
-        const title = "Ticket Transfer Successful";
-        const body = `Your ticket has been successfully transferred to the new owner.`;
-        const data = {
-          type: "ticket_transfer",
-          ticketId: ticketId.toString(),
-          newOwnerId: toUserId.toString(),
-        };
-
-        await notificationService.sendNotification(tokens, title, body, data);
-
-        // Lưu thông báo vào cơ sở dữ liệu
-        await notificationService.saveNotification(
-          oldOwner._id,
-          "ticket_transfer",
-          title,
-          body,
-          data
-        );
-      }
-
       return ticket;
     } catch (error) {
       await session.abortTransaction();
