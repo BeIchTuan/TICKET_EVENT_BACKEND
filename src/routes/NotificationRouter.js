@@ -23,4 +23,9 @@ router.patch(
   NotificationController.markAllAsRead
 );
 
+router.post(
+  "/test",
+  NotificationController.sendNotification
+);
+
 module.exports = router;
