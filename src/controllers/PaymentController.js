@@ -25,7 +25,12 @@ class PaymentController {
       const { orderId, resultCode, message } = req.body;
 
       console.log("Looking for ticket with orderId:", orderId);
-      const ticket = await Ticket.findOne({ "paymentData.orderId": orderId });
+      const ticket = await Ticket.findOne({
+        "paymentData.orderId": orderId,
+      }).populate({
+        path: "buyerId",
+        select: "fcmTokens _id",
+      });
       console.log("Found ticket:", ticket);
 
       if (!ticket) {
@@ -50,6 +55,33 @@ class PaymentController {
           console.log("Attempting to send success email...");
           await EmailService.sendPaymentSuccessEmail(ticket);
           console.log("Payment success email sent");
+
+          // Gửi thông báo qua FCM
+          if (ticket.buyerId?.fcmTokens?.length) {
+            const tokens = ticket.buyerId.fcmTokens.filter(Boolean);
+            const title = "Payment Successful";
+            const body = `Your ticket for order ${orderId} has been successfully paid. 🎉`;
+            const data = {
+              type: "payment_success",
+              ticketId: ticket._id.toString(),
+              orderId: orderId.toString(),
+            };
+
+            await NotificationService.sendNotification(
+              tokens,
+              title,
+              body,
+              data
+            );
+
+            await NotificationService.saveNotification(
+              ticket.buyerId._id,
+              "payment_success",
+              title,
+              body,
+              data
+            );
+          }
         } catch (emailError) {
           console.error("Error sending payment success email:", emailError);
           console.error(emailError.stack);
@@ -89,9 +121,6 @@ class PaymentController {
       const result = await MomoService.checkTransactionStatus(orderId);
       const ticket = await Ticket.findOne({
         "paymentData.orderId": orderId,
-      }).populate({
-        path: "buyerId",
-        select: "fcmTokens _id",
       });
 
       if (ticket) {
@@ -102,33 +131,6 @@ class PaymentController {
           try {
             await EmailService.sendPaymentSuccessEmail(ticket);
             console.log("Payment success email sent");
-
-            // Gửi thông báo qua FCM
-            if (ticket.buyerId?.fcmTokens?.length) {
-              const tokens = ticket.buyerId.fcmTokens.filter(Boolean);
-              const title = "Payment Successful";
-              const body = `Your ticket for order ${orderId} has been successfully paid. 🎉`;
-              const data = {
-                type: "payment_success",
-                ticketId: ticket._id.toString(),
-                orderId: orderId.toString(),
-              };
-
-              await NotificationService.sendNotification(
-                tokens,
-                title,
-                body,
-                data
-              );
-
-              await NotificationService.saveNotification(
-                ticket.buyerId._id,
-                "payment_success",
-                title,
-                body,
-                data
-              );
-            }
           } catch (emailError) {
             console.error("Error sending payment success email:", emailError);
           }
