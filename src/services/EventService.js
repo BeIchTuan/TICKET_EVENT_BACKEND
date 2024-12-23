@@ -309,6 +309,23 @@ class EventService {
       }
 
       return await Event.find(query)
+        .sort({ createdAt: -1 })
+        .populate("categoryId", "name")
+        .populate("createdBy", "name")
+        .populate("conversation", "_id title")
+        .populate("collaborators", "_id name")
+        .exec()
+        // đổi tên categoryId thành category trong data trả về
+        .then((events) =>
+          events.map((event) => {
+            const eventObj = event.toObject();
+            eventObj.category = eventObj.categoryId;
+            delete eventObj.categoryId;
+            return eventObj;
+          })
+        );
+
+      return await Event.find(query)
         .populate("categoryId", "name")
         .populate("createdBy", "_id name avatar studentId")
         .sort({ date: 1 }); // Sắp xếp theo ngày tăng dần
