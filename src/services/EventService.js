@@ -72,8 +72,8 @@ class EventService {
       });
 
       const tokens = users
-        .flatMap((user) => user.fcmTokens) 
-        .filter(Boolean); 
+        .flatMap((user) => user.fcmTokens)
+        .filter(Boolean);
 
       if (tokens.length) {
         const title = "New Event Created!";
@@ -116,9 +116,28 @@ class EventService {
       if (filters.date) query.date = filters.date;
       if (filters.categoryId) query.categoryId = filters.categoryId;
       if (filters.createdBy) query.createdBy = filters.createdBy;
+      if (filters.isAfter) query.date = { $gt: new Date() };
+
+      let sortOptions = { createdAt: -1 };
+      if (filters.sortBy) {
+        switch (filters.sortBy) {
+          case "date":
+            sortOptions = { date: -1 };
+            break;
+          case "sold":
+            sortOptions = { ticketsSold: -1 };
+            break;
+          case "price":
+            sortOptions = { price: 1 };
+            break;
+          default:
+            sortOptions = { createdAt: -1 };
+            break;
+        }
+      }
 
       return await Event.find(query)
-        .sort({ createdAt: -1 })
+        .sort(sortOptions) // Sắp xếp theo thời gian tạo mới nhất
         .populate("categoryId", "name")
         .populate("createdBy", "name")
         .populate("conversation", "_id title")
@@ -199,8 +218,8 @@ class EventService {
       });
 
       const tokens = users
-        .flatMap((user) => user.fcmTokens) 
-        .filter(Boolean); 
+        .flatMap((user) => user.fcmTokens)
+        .filter(Boolean);
 
       if (tokens.length) {
         const title = "The Event has been changed!";
@@ -324,11 +343,6 @@ class EventService {
             return eventObj;
           })
         );
-
-      return await Event.find(query)
-        .populate("categoryId", "name")
-        .populate("createdBy", "_id name avatar studentId")
-        .sort({ date: 1 }); // Sắp xếp theo ngày tăng dần
     } catch (error) {
       throw error;
     }
@@ -370,7 +384,7 @@ class EventService {
         status: 'booked',
         paymentStatus: { $in: ['paid', 'transferred'] }  // Chỉ lấy vé đã thanh toán hoặc đã chuyển nhượng
       }).populate('buyerId', 'name email phone'); // Lấy thông tin người mua vé
-      
+
       // Trích xuất thông tin người tham gia từ tickets
       const participants = tickets.map(ticket => ({
         ticketId: ticket._id,
@@ -378,12 +392,12 @@ class EventService {
         ticketType: ticket.ticketType,
         purchaseDate: ticket.createdAt
       }));
-       return participants;
+      return participants;
     } catch (error) {
       throw error;
     }
   }
-   
+
 }
 
 module.exports = EventService;
