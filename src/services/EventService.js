@@ -8,6 +8,7 @@ const {
 } = require("../utils/UploadImage");
 const notificationService = require("../services/NotificationService");
 const Ticket = require("../models/TicketModel");
+const TransferTicket = require("../models/TransferTicketModel");
 
 class EventService {
   static async createEvent(eventData) {
@@ -231,18 +232,54 @@ class EventService {
 
   static async deleteEvent(eventId, userId) {
     try {
-      const event = await Event.findOneAndUpdate(
-        {
-          _id: eventId,
-          createdBy: userId,
-          isDeleted: false,
-          status: "active",
-        },
-        { isDeleted: true, status: "canceled" },
-        { new: true }
+      const event = await Event.findById(eventId);
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      if (event.createdBy.toString() !== userId) {
+        throw new Error("You don't have permission to delete this event");
+      }
+
+      // Cập nhật status event thành cancelled theo đúng enum trong schema
+      event.status = 'cancelled';
+      
+      // Cập nhật tất cả các vé của event thành cancelled
+      const tickets = await Ticket.find({ eventId: eventId });
+      const ticketIds = tickets.map(ticket => ticket._id);
+
+      await Ticket.updateMany(
+        { eventId: eventId },
+        { 
+          $set: { 
+            status: "cancelled",
+            cancelReason: "Event has been deleted by organizer"
+          },
+          $unset: {
+            transferTo: "",
+            transferRequestTime: ""
+          }
+        }
       );
 
-      if (!event) throw new Error("Event not found or unauthorized");
+      // Xóa tất cả transfer tickets liên quan từ collection transfer_tickets
+      await TransferTicket.updateMany(
+        { ticket: { $in: ticketIds } },
+        {
+          $set: {
+            status: "cancelled",
+            cancelReason: "Original event has been deleted"
+          }
+        }
+      );
+
+      // Xóa forum của event
+      await Conversation.deleteMany({ eventId: eventId });
+
+      // Soft delete event
+      event.isDeleted = true;
+      await event.save();
+
       return event;
     } catch (error) {
       throw error;
