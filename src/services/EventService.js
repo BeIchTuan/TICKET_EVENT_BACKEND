@@ -278,27 +278,40 @@ class EventService {
 
   static async searchEvents(searchParams) {
     try {
+      console.log("Search query:", searchParams);
       const query = { isDeleted: false };
 
+      // Tìm kiếm theo tên sự kiện (không phân biệt hoa thường)
       if (searchParams.name) {
-        query.$text = { $search: searchParams.name };
+        query.name = { $regex: searchParams.name, $options: "i" };
       }
+      // Tìm kiếm theo địa điểm (không phân biệt hoa thường)
       if (searchParams.location) {
         query.location = { $regex: searchParams.location, $options: "i" };
       }
+      // Tìm kiếm theo ngày
       if (searchParams.date) {
-        query.date = searchParams.date;
+        // Chuyển đổi ngày thành đối tượng Date
+        const searchDate = new Date(searchParams.date);
+        // Tìm các sự kiện trong cùng ngày
+        query.date = {
+          $gte: new Date(searchDate.setHours(0, 0, 0, 0)),
+          $lt: new Date(searchDate.setHours(23, 59, 59, 999))
+        };
       }
+      // Tìm kiếm theo category
       if (searchParams.categoryId) {
         query.categoryId = searchParams.categoryId;
       }
+      // Tìm kiếm theo trạng thái
       if (searchParams.status) {
         query.status = searchParams.status;
       }
 
       return await Event.find(query)
         .populate("categoryId", "name")
-        .populate("createdBy", "_id name avatar studentId");
+        .populate("createdBy", "_id name avatar studentId")
+        .sort({ date: 1 }); // Sắp xếp theo ngày tăng dần
     } catch (error) {
       throw error;
     }

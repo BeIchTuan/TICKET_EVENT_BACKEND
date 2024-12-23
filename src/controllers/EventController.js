@@ -174,6 +174,7 @@ class EventController {
 
   static async searchEvents(req, res) {
     try {
+      console.log("Search query:", req.query);
       const event = await EventService.searchEvents(req.query);
       res.status(200).json(event);
     } catch (error) {
