@@ -67,7 +67,7 @@ class AuthService {
       if (!user) {
         return {
           status: "error",
-          message: "The user is not defined",
+          message: "Email not found, please register",
         };
       }
 
