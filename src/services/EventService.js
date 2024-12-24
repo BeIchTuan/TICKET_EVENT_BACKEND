@@ -391,7 +391,9 @@ class EventService {
         $or: [{ createdBy: userId }, { collaborators: userId }],
         isDeleted: false,
       })
+        .sort({ createdAt: -1 })
         .populate("createdBy", "_id name avatar studentId")
+        .populate("conversation", "_id title")
         .populate("collaborators", "_id name")
         .populate({
           path: "categoryId",
