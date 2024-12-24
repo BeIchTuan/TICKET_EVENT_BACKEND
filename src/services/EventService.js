@@ -299,6 +299,35 @@ class EventService {
       event.isDeleted = true;
       await event.save();
 
+      const users = await User.find({
+        role: { $in: ["ticket_buyer", "admin"] },
+      });
+
+      const tokens = users
+        .flatMap((user) => user.fcmTokens)
+        .filter(Boolean);
+
+      if (tokens.length) {
+        const title = "The Event has been cancelled!";
+        const body = `Check out the new update event: ${event.name}`;
+        const data = {
+          type: "event_update",
+          eventId: event._id.toString(),
+        };
+
+        await notificationService.sendNotification(tokens, title, body, data);
+
+        for (const user of users) {
+          await notificationService.saveNotification(
+            user._id,
+            "event_update",
+            title,
+            body,
+            data
+          );
+        }
+      }
+
       return event;
     } catch (error) {
       throw error;
