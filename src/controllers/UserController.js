@@ -55,6 +55,14 @@ class UserController {
       }
 
       const response = await UserService.deleteUser(userId);
+
+      if (response.status === "error") {
+        return res.status(409).json({
+          status: response.status,
+          message: response.message,
+        });
+      }
+
       return res.status(200).json(response);
     } catch (error) {
       return res.status(500).json({
@@ -97,8 +105,8 @@ class UserController {
   }
 
   async searchUsers(req, res) {
-    const { query } = req.query; 
-    const { role } = req.query; 
+    const { query } = req.query;
+    const { role } = req.query;
     const userId = req.id;
     try {
       if (!query) {
