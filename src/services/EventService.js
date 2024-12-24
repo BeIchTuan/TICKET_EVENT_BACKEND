@@ -336,7 +336,7 @@ class EventService {
 
   static async getEventDetails(eventId) {
     try {
-      const event = await Event.findOne({ _id: eventId, isDeleted: false })
+      const event = await Event.findOne({ _id: eventId })
         .populate("collaborators", "_id name avatar studentId")
         .populate("createdBy", "_id name avatar studentId")
         .populate("conversation", "_id title")
