@@ -42,7 +42,7 @@ class AuthService {
       };
 
       const createdUser = await User.create(userData);
-      
+
       const populatedUser = await User.findById(createdUser._id)
         .populate("university", "name")
         .populate("faculty", "name")
@@ -97,7 +97,7 @@ class AuthService {
         access_token: accessToken,
       };
     } catch (error) {
-      throw new Error(error.message);
+      throw new Error(error.message); 
     }
   }
 }

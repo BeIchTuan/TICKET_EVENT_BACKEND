@@ -68,6 +68,12 @@ class AuthController {
 
       const response = await AuthService.loginUser(req.body);
 
+      if (response.status === "error") {
+        return res
+          .status(401)
+          .json({ status: "error", message: response.message }); // Trả về mã lỗi thích hợp
+      }
+
       const userData = {
         id: response.userId,
         email,
