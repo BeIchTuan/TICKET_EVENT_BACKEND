@@ -38,9 +38,18 @@ class AuthController {
       }
 
       const response = await AuthService.createUser(req.body);
+
+      if (response.status === "error") {
+        return res.status(409).json({
+          status: response.status,
+          message: response.message,
+        });
+      }
+
       return res.status(201).json(response);
     } catch (error) {
       return res.status(500).json({
+        status: "error",
         message: "Internal server error",
         error: error.toString(),
       });
