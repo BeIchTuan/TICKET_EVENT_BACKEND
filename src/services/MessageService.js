@@ -6,7 +6,7 @@ class MessageService {
     try {
       const skip = (page - 1) * limit;
 
-      return await Message.find({ conversationId, isDeleted: false })
+      return await Message.find({conversationId})
         .sort({ time: -1 })
         .skip(skip)
         .limit(parseInt(limit, 10))
@@ -112,6 +112,7 @@ class MessageService {
       throw new Error("You are not authorized to delete this message.");
     }
 
+    message.content = "Message is deleted"
     message.isDeleted = true;
     await message.save();
   }
