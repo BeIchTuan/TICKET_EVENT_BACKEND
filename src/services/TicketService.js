@@ -41,7 +41,7 @@ class TicketService {
     });
 
     await ticket.save();
-    ticket.populate("eventId", "_id name");
+    await ticket.populate("eventId", "_id name");
 
     // Cập nhật số lượng vé đã bán
     event.ticketsSold += 1;
