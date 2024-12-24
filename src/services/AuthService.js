@@ -23,11 +23,11 @@ class AuthService {
       if (existingUser) {
         return {
           status: "error",
-          message: "The email and role already exists",
+          message: "The email already exists",
         };
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10); // Use 10 as salt rounds
+      const hashedPassword = await bcrypt.hash(password, 10);
       const userData = {
         email,
         password: hashedPassword,
@@ -97,7 +97,7 @@ class AuthService {
         access_token: accessToken,
       };
     } catch (error) {
-      throw new Error(error.message); 
+      throw new Error(error.message);
     }
   }
 }

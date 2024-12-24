@@ -9,7 +9,7 @@ const { deleteFromCloudinary } = require("../utils/UploadImage");
 class UserService {
   async updateUser(id, data) {
     try {
-      const user = await User.findById(id);
+      const user = await User.findOne({ _id: id, isDeleted: false });
       if (!user) {
         throw new Error("User not found");
       }
@@ -42,7 +42,7 @@ class UserService {
 
   async deleteUser(id) {
     try {
-      const user = await User.findById(id);
+      const user = await User.findOne({ _id: id, isDeleted: false });
 
       if (!user) {
         return {
@@ -51,10 +51,11 @@ class UserService {
         };
       }
 
-      await User.findByIdAndDelete(id);
+      await User.findByIdAndUpdate(id, { isDeleted: true });
+
       return {
         status: "success",
-        message: "Delete success",
+        message: "User successfully marked as deleted",
       };
     } catch (error) {
       throw new Error(error.message);
@@ -63,7 +64,7 @@ class UserService {
 
   async getUser(id) {
     try {
-      const user = await User.findById(id)
+      const user = await User.findOne({ _id: id, isDeleted: false })
         .populate("university", "name")
         .populate("faculty", "name")
         .populate("major", "name");
@@ -98,8 +99,10 @@ class UserService {
 
   async getUsers({ role }) {
     try {
-      const filter = role ? { role } : {};
-
+      const filter = { isDeleted: false };
+      if (role) {
+        filter.role = role;
+      }
       const users = await User.find(filter)
         .populate("university", "name")
         .populate("faculty", "name")
@@ -123,45 +126,15 @@ class UserService {
     }
   }
 
-  // async searchUsers(query, role, userId) {
-  //   try {
-  //     const filter = {
-  //       _id: { $ne: userId }, // Exclude the user with userId
-  //     };
-
-  //     if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
-  //       filter.email = query;
-  //     } else if (/^\d+$/.test(query)) {
-  //       filter.$or = [{ phone: query }, { studentId: query }];
-  //     } else {
-  //       filter.name = { $regex: query, $options: "i" };
-  //     }
-
-  //     if (role) {
-  //       filter.role = role;
-  //     }
-
-  //     const users = await User.find(filter);
-
-  //     return users.map((user) => ({
-  //       _id: user._id,
-  //       name: user.name,
-  //       avatar: user.avatar || null,
-  //       studentId: user.studentId || null,
-  //     }));
-  //   } catch (error) {
-  //     throw new Error(error.message);
-  //   }
-  // }
-
   async searchUsers(query, role, userId) {
     try {
       query = decodeURIComponent(query.replace(/\+/g, " "));
-  
+
       const filter = {
-        _id: { $ne: userId }, 
+        _id: { $ne: userId },
+        isDeleted: false,
       };
-  
+
       if (/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(query)) {
         filter.email = { $regex: query, $options: "i" };
       } else if (/^\d+$/.test(query)) {
@@ -172,13 +145,13 @@ class UserService {
       } else {
         filter.name = { $regex: query, $options: "i" };
       }
-  
+
       if (role) {
         filter.role = role;
       }
-  
+
       const users = await User.find(filter);
-  
+
       return users.map((user) => ({
         _id: user._id,
         name: user.name,
@@ -189,7 +162,6 @@ class UserService {
       throw new Error(error.message);
     }
   }
-  
 }
 
 module.exports = new UserService();

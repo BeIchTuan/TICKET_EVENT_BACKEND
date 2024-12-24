@@ -19,10 +19,11 @@ router.put(
   authMiddleware(["ticket_buyer", "event_creator", "admin"]),
   userController.updateUser
 );
-// router.delete('/user/:id', userController.deleteUser)
 
+//Routes for admin
 //Get all users
 router.get("/all", authMiddleware(["admin"]), userController.getUsers);
+router.delete("/:id/delete", authMiddleware(["admin"]), userController.deleteUser);
 
 //Search users
 router.get(
