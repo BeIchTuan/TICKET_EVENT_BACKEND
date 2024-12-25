@@ -9,6 +9,7 @@ const {
 const notificationService = require("../services/NotificationService");
 const Ticket = require("../models/TicketModel");
 const TransferTicket = require("../models/TransferTicketModel");
+const UserService = require("./UserService");
 
 class EventService {
   static async createEvent(eventData) {
@@ -186,11 +187,16 @@ class EventService {
     try {
       const event = await Event.findOne({
         _id: eventId,
-        createdBy: userId,
+        // createdBy: userId,
         isDeleted: false,
       });
+      const user = await UserService.getUser(userId);
+      const role = user.role;
 
-      if (!event) throw new Error("Event not found or unauthorized");
+      if (role === "event_creator" && event.createdBy.toString() !== userId) {
+        throw new Error("You don't have permission to update this event");
+      }
+      // if (!event) throw new Error("Event not found or unauthorized");
 
       if (imagesToDelete && imagesToDelete.length > 0) {
         if (typeof imagesToDelete === "string") {
@@ -274,21 +280,24 @@ class EventService {
         throw new Error("Event not found");
       }
 
-      if (event.createdBy.toString() !== userId) {
+      const user = await UserService.getUser(userId);
+      const role = user.role;
+
+      if (role === "event_creator" && event.createdBy.toString() !== userId) {
         throw new Error("You don't have permission to delete this event");
       }
 
       // Cập nhật status event thành cancelled theo đúng enum trong schema
       event.status = 'cancelled';
-      
+
       // Cập nhật tất cả các vé của event thành cancelled
       const tickets = await Ticket.find({ eventId: eventId });
       const ticketIds = tickets.map(ticket => ticket._id);
 
       await Ticket.updateMany(
         { eventId: eventId },
-        { 
-          $set: { 
+        {
+          $set: {
             status: "cancelled",
             cancelReason: "Event has been deleted by organizer"
           },
@@ -434,10 +443,15 @@ class EventService {
 
   static async getManagedEvents(userId) {
     try {
-      const events = await Event.find({
-        $or: [{ createdBy: userId }, { collaborators: userId }],
-        isDeleted: false,
-      })
+      const user = await UserService.getUser(userId);
+      const role = user.role;
+      let query = { isDeleted: false };
+      if (role === "event_creator") {
+        query = { isDeleted: false, $or: [{ createdBy: userId }, { collaborators: userId }] };
+      } else if (role === "admin") {
+        query = { isDeleted: false };
+      }
+      const events = await Event.find(query)
         .sort({ createdAt: -1 })
         .populate("createdBy", "_id name avatar studentId")
         .populate("conversation", "_id title")
@@ -468,16 +482,20 @@ class EventService {
       const tickets = await Ticket.find({
         eventId: eventId,
         status: 'booked',
-        paymentStatus: { $in: ['paid', 'transferred'] }  // Chỉ lấy vé đã thanh toán hoặc đã chuyển nhượng
-      }).populate('buyerId', 'name email phone'); // Lấy thông tin người mua vé
+        paymentStatus: { $in: ['paid'] }  // Chỉ lấy vé đã thanh toán hoặc đã chuyển nhượng
+      }).populate('buyerId', '_id name avatar studentId'); // Lấy thông tin người mua vé
 
       // Trích xuất thông tin người tham gia từ tickets
-      const participants = tickets.map(ticket => ({
-        ticketId: ticket._id,
-        participant: ticket.buyerId,
-        ticketType: ticket.ticketType,
-        purchaseDate: ticket.createdAt
-      }));
+      const participants = tickets
+        .map(ticket => ticket.buyerId)
+        .filter(participant => participant !== null) // Lọc bỏ null
+        .reduce((unique, participant) => {
+          if (!unique.some(p => p._id.equals(participant._id))) {
+            unique.push(participant);
+          }
+          return unique;
+        }, []); // Loại bỏ trùng lặp
+
       return participants;
     } catch (error) {
       throw error;

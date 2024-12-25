@@ -5,17 +5,28 @@ class UniversityController {
   async createUniversity(req, res) {
     try {
       const university = await UniversityService.createUniversity(req.body);
-      res.status(201).json(university);
+      const data = university.toJSON();
+      res.status(201).json({ message: "University created successfully", ...data });
     } catch (error) {
       res.status(500).json({ message: "Error creating university", error });
     }
   }
 
   // Get all universities
-  async getAllUniversities(req, res) {
+  async getAllUniversitiesWithFacultiesAndMajors(req, res) {
     try {
       const universities =
         await UniversityService.getAllUniversitiesWithFacultiesAndMajors();
+      res.status(200).json(universities);
+    } catch (error) {
+      res.status(500).json({ message: "Error retrieving universities", error });
+    }
+  }
+  
+  async getAllUniversities(req, res) {
+    try {
+      const universities =
+        await UniversityService.getAllUniversities();
       res.status(200).json(universities);
     } catch (error) {
       res.status(500).json({ message: "Error retrieving universities", error });
@@ -71,12 +82,7 @@ class UniversityController {
         return res.status(404).json({ success: false, message: "University not found" });
       }
 
-      res.status(200).json({
-        success: true,
-        data: {
-          faculties: university.faculties, 
-        },
-      });
+      res.status(200).json(university.faculties);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
