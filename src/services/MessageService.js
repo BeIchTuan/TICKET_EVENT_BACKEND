@@ -10,7 +10,7 @@ class MessageService {
         .sort({ time: -1 })
         .skip(skip)
         .limit(parseInt(limit, 10))
-        .select("-__v -conversationId -isDeleted -updatedAt -createdAt")
+        .select("-__v -conversationId -updatedAt -createdAt")
         .populate("sender", "_id name avatar")
         .lean();
     } catch (error) {
@@ -74,7 +74,7 @@ class MessageService {
       }
 
       const savedMessage = await Message.findById(newMessage._id)
-        .select("-__v -conversationId -isDeleted -updatedAt -createdAt")
+        .select("-__v -conversationId -updatedAt -createdAt")
         .populate("sender", "_id name avatar")
         .lean();
 
