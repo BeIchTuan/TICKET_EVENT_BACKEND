@@ -177,7 +177,7 @@ class EventService {
 
       if (role === "event_creator" && event.createdBy.toString() !== userId) {
         throw new Error("You don't have permission to update this event");
-      }  
+      }
       // if (!event) throw new Error("Event not found or unauthorized");
 
       if (imagesToDelete && imagesToDelete.length > 0) {
@@ -262,7 +262,10 @@ class EventService {
         throw new Error("Event not found");
       }
 
-      if (event.createdBy.toString() !== userId) {
+      const user = await UserService.getUser(userId);
+      const role = user.role;
+
+      if (role === "event_creator" && event.createdBy.toString() !== userId) {
         throw new Error("You don't have permission to delete this event");
       }
 
@@ -461,16 +464,20 @@ class EventService {
       const tickets = await Ticket.find({
         eventId: eventId,
         status: 'booked',
-        paymentStatus: { $in: ['paid', 'transferred'] }  // Chỉ lấy vé đã thanh toán hoặc đã chuyển nhượng
-      }).populate('buyerId', 'name email phone'); // Lấy thông tin người mua vé
+        paymentStatus: { $in: ['paid'] }  // Chỉ lấy vé đã thanh toán hoặc đã chuyển nhượng
+      }).populate('buyerId', '_id name avatar studentId'); // Lấy thông tin người mua vé
 
       // Trích xuất thông tin người tham gia từ tickets
-      const participants = tickets.map(ticket => ({
-        ticketId: ticket._id,
-        participant: ticket.buyerId,
-        ticketType: ticket.ticketType,
-        purchaseDate: ticket.createdAt
-      }));
+      const participants = tickets
+        .map(ticket => ticket.buyerId)
+        .filter(participant => participant !== null) // Lọc bỏ null
+        .reduce((unique, participant) => {
+          if (!unique.some(p => p._id.equals(participant._id))) {
+            unique.push(participant);
+          }
+          return unique;
+        }, []); // Loại bỏ trùng lặp
+
       return participants;
     } catch (error) {
       throw error;

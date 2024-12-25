@@ -65,9 +65,9 @@ class UserService {
   async getUser(id) {
     try {
       const user = await User.findOne({ _id: id, isDeleted: false })
-        .populate("university", "name")
-        .populate("faculty", "name")
-        .populate("major", "name");
+        .populate("university", "_id name")
+        .populate("faculty", "_id name")
+        .populate("major", "_id name");
 
       if (!user) {
         return {
@@ -76,22 +76,22 @@ class UserService {
         };
       }
 
-      const userData = {
-        _id: user._id,
-        email: user.email,
-        name: user.name || null,
-        avatar: user.avatar || null,
-        university: user.university ? user.university.name : null,
-        faculty: user.faculty ? user.faculty.name : null,
-        major: user.major ? user.major.name : null,
-        studentId: user.studentId || null,
-        birthday: user.birthday || null,
-        gender: user.gender || null,
-        phone: user.phone || null,
-        role: user.role || null,
-      };
+      // const userData = {
+      //   _id: user._id,
+      //   email: user.email,
+      //   name: user.name || null,
+      //   avatar: user.avatar || null,
+      //   university: user.university ? user.university.name : null,
+      //   faculty: user.faculty ? user.faculty.name : null,
+      //   major: user.major ? user.major.name : null,
+      //   studentId: user.studentId || null,
+      //   birthday: user.birthday || null,
+      //   gender: user.gender || null,
+      //   phone: user.phone || null,
+      //   role: user.role || null,
+      // };
 
-      return userData;
+      return user;
     } catch (error) {
       throw new Error(error.message);
     }
@@ -104,9 +104,12 @@ class UserService {
         filter.role = role;
       }
       const users = await User.find(filter)
+        .select("-password -isDeleted -createdAt -updatedAt -__v -accessToken -fcmTokens")
         .populate("university", "_id name")
         .populate("faculty", "_id name")
-        .populate("major", "_id name");
+        .populate("major", "_id name")
+        .populate("ticketsBought", "_id")
+        .populate("eventsCreated", "_id")
 
       return users;
     } catch (error) {
