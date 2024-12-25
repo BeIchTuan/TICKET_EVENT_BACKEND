@@ -68,6 +68,24 @@ class EventService {
       console.log("Event before save:", event);
       const savedEvent = await event.save();
 
+      // Thêm eventId vào mảng eventsCreated của user
+      await User.findByIdAndUpdate(
+        eventData.createdBy,
+        {
+          $push: { eventsCreated: savedEvent._id }
+        }
+      );
+
+      // Nếu có collaborators, thêm eventId vào mảng eventsCreated của họ
+      if (eventData.collaborators?.length) {
+        await User.updateMany(
+          { _id: { $in: eventData.collaborators } },
+          {
+            $push: { eventsCreated: savedEvent._id }
+          }
+        );
+      }
+
       const users = await User.find({
         role: { $in: ["ticket_buyer", "admin"] },
       });
