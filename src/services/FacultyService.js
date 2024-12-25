@@ -1,8 +1,32 @@
 const Faculty = require("../models/FacultyModel");
+const University = require("../models/UniversityModel");
+const Major = require("../models/MajorModel");
 
 class FacultyService {
-  async createFaculty(data) {
-    return await Faculty.create(data);
+  async createFaculty(universityId, { name }) {
+    const faculty = new Faculty({ name });
+    const savedFaculty = await faculty.save();
+
+    await University.findByIdAndUpdate(
+      universityId,
+      { $push: { faculties: savedFaculty._id } },
+      { new: true }
+    );
+
+    return savedFaculty;
+  }
+
+  async createMajor(facultyId, { name }) {
+    const major = new Major({ name });
+    const savedMajor = await major.save();
+
+    await Faculty.findByIdAndUpdate(
+      facultyId,
+      { $push: { majors: savedMajor._id } },
+      { new: true }
+    );
+
+    return savedMajor;
   }
 
   async getAllFaculties() {
@@ -22,13 +46,12 @@ class FacultyService {
   }
 
   async getMajorsByFacultyID(facultyId) {
-    console.log(facultyId)
-    return await Faculty.findById(facultyId)
-    .populate({
+    console.log(facultyId);
+    return await Faculty.findById(facultyId).populate({
       path: "majors",
-      match: { isDeleted: { $ne: true } }, 
-      select: "name _id", 
-    })
+      match: { isDeleted: { $ne: true } },
+      select: "name _id",
+    });
   }
 }
 

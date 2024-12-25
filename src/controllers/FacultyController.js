@@ -5,10 +5,21 @@ const facultyService = require("../services/FacultyService");
 class FacultyController {
   async createFaculty(req, res) {
     try {
-      const faculty = await facultyService.createFaculty(req.body);
-      res.status(201).json({ success: true, data: faculty });
+      const { universityId, name } = req.body;
+      const faculty = await FacultyService.createFaculty(universityId, { name });
+      res.status(201).json(faculty);
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  async createMajor(req, res) {
+    try {
+      const { facultyId, name } = req.body;
+      const major = await FacultyService.createMajor(facultyId, { name });
+      res.status(201).json(major);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
     }
   }
 
