@@ -426,6 +426,52 @@ class TicketController {
       });
     }
   }
+
+  static async checkInByStudentId(req, res) {
+    try {
+      const { studentId, bookingCode } = req.body;
+      const checkInBy = req.id; // ID của người tổ chức từ token
+
+      // Validate input
+      if (!studentId || !bookingCode) {
+        return res.status(400).json({
+          status: "error",
+          message: "Student ID and booking code are required",
+        });
+      }
+
+      const ticket = await TicketService.checkInByStudentId(
+        bookingCode,
+        studentId,
+        checkInBy
+      );
+
+      return res.status(200).json({
+        status: "success",
+        message: "Check-in successful",
+        data: {
+          _id: ticket._id,
+          event: {
+            _id: ticket.eventId._id,
+            name: ticket.eventId.name,
+          },
+          buyer: {
+            _id: ticket.buyerId._id,
+            name: ticket.buyerId.name,
+            studentId: ticket.buyerId.studentId,
+          },
+          checkInTime: ticket.checkInTime,
+          checkedInBy: ticket.checkedInBy,
+        },
+      });
+    } catch (error) {
+      console.error("Check-in error:", error);
+      res.status(error.message.includes("permission") ? 403 : 400).json({
+        status: "error",
+        message: error.message,
+      });
+    }
+  }
 }
 
 module.exports = TicketController;

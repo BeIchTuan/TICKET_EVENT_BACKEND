@@ -390,6 +390,79 @@ class TicketService {
       throw new Error("Error getting transfering tickets: " + error.message);
     }
   }
+
+  static async checkInByStudentId(bookingCode, studentId, checkInBy) {
+    try {
+      // Tìm vé và populate thông tin cần thiết
+      const ticket = await Ticket.findOne({ bookingCode })
+        .populate("eventId")
+        .populate("buyerId");
+
+      if (!ticket) {
+        throw new Error("Ticket not found");
+      }
+
+      // Kiểm tra MSSV của người mua vé
+      if (!ticket.buyerId.studentId) {
+        throw new Error("Ticket owner does not have a student ID");
+      }
+
+      // Kiểm tra MSSV có khớp không
+      if (ticket.buyerId.studentId !== studentId) {
+        throw new Error("Student ID does not match ticket owner");
+      }
+
+      // Kiểm tra trạng thái vé
+      if (ticket.status === "checked-in") {
+        throw new Error("Ticket already checked-in");
+      }
+
+      if (ticket.paymentStatus !== "paid") {
+        throw new Error("Ticket payment not completed");
+      }
+
+      // Kiểm tra quyền check-in
+      const isOrganizer = ticket.eventId.createdBy.toString() === checkInBy;
+      const isCollaborator = ticket.eventId.collaborators.some(
+        (collaborator) => collaborator.toString() === checkInBy
+      );
+
+      if (!isOrganizer && !isCollaborator) {
+        throw new Error("You don't have permission to check-in this ticket");
+      }
+
+      // Cập nhật trạng thái vé
+      ticket.status = "checked-in";
+      ticket.checkInTime = new Date();
+      ticket.checkedInBy = checkInBy;
+      await ticket.save();
+
+      // Gửi thông báo
+      if (ticket.buyerId?.fcmTokens?.length) {
+        const tokens = ticket.buyerId.fcmTokens.filter(Boolean);
+        const title = "Check-in Successfully";
+        const body = `Thanks for joining the event. Wish you have a great experience! 🎉`;
+        const data = {
+          type: "check_in",
+          ticketId: ticket._id.toString(),
+          eventId: ticket.eventId._id.toString(),
+        };
+
+        await notificationService.sendNotification(tokens, title, body, data);
+        await notificationService.saveNotification(
+          ticket.buyerId._id,
+          "check_in",
+          title,
+          body,
+          data
+        );
+      }
+
+      return ticket;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = TicketService;

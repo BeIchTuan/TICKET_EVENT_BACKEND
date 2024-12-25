@@ -48,6 +48,10 @@ router.get('/:ticketId',
   TicketController.getTicketDetail
 );
 
-
+router.post(
+  '/check-in-by-student-id',
+  authMiddleware(['event_creator']),
+  TicketController.checkInByStudentId
+);
 
 module.exports = router;
