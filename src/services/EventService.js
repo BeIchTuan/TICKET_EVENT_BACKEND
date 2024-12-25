@@ -9,6 +9,7 @@ const {
 const notificationService = require("../services/NotificationService");
 const Ticket = require("../models/TicketModel");
 const TransferTicket = require("../models/TransferTicketModel");
+const UserService = require("./UserService");
 
 class EventService {
   static async createEvent(eventData) {
@@ -168,11 +169,16 @@ class EventService {
     try {
       const event = await Event.findOne({
         _id: eventId,
-        createdBy: userId,
+        // createdBy: userId,
         isDeleted: false,
       });
+      const user = await UserService.getUser(userId);
+      const role = user.role;
 
-      if (!event) throw new Error("Event not found or unauthorized");
+      if (role === "event_creator" && event.createdBy.toString() !== userId) {
+        throw new Error("You don't have permission to update this event");
+      }  
+      // if (!event) throw new Error("Event not found or unauthorized");
 
       if (imagesToDelete && imagesToDelete.length > 0) {
         if (typeof imagesToDelete === "string") {
@@ -262,15 +268,15 @@ class EventService {
 
       // Cập nhật status event thành cancelled theo đúng enum trong schema
       event.status = 'cancelled';
-      
+
       // Cập nhật tất cả các vé của event thành cancelled
       const tickets = await Ticket.find({ eventId: eventId });
       const ticketIds = tickets.map(ticket => ticket._id);
 
       await Ticket.updateMany(
         { eventId: eventId },
-        { 
-          $set: { 
+        {
+          $set: {
             status: "cancelled",
             cancelReason: "Event has been deleted by organizer"
           },
@@ -416,10 +422,15 @@ class EventService {
 
   static async getManagedEvents(userId) {
     try {
-      const events = await Event.find({
-        $or: [{ createdBy: userId }, { collaborators: userId }],
-        isDeleted: false,
-      })
+      const user = await UserService.getUser(userId);
+      const role = user.role;
+      let query = { isDeleted: false };
+      if (role === "event_creator") {
+        query = { isDeleted: false, $or: [{ createdBy: userId }, { collaborators: userId }] };
+      } else if (role === "admin") {
+        query = { isDeleted: false };
+      }
+      const events = await Event.find(query)
         .sort({ createdAt: -1 })
         .populate("createdBy", "_id name avatar studentId")
         .populate("conversation", "_id title")

@@ -26,7 +26,7 @@ router.post(
 );
 
 router.get('/:eventId/participants',
-  authMiddleware(["event_creator"]),
+  authMiddleware(["event_creator", "admin"]),
   EventController.getEventParticipants
 );
 
