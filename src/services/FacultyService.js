@@ -12,7 +12,7 @@ class FacultyService {
       { $push: { faculties: savedFaculty._id } },
       { new: true }
     );
-    
+
     return savedFaculty;
   }
 
@@ -37,12 +37,20 @@ class FacultyService {
     return await Faculty.findByIdAndUpdate(id, data, { new: true });
   }
 
+  async updateMajor(id, data) {
+    return await Major.findByIdAndUpdate(id, data, { new: true });
+  }
+
   async deleteFaculty(id) {
     return await Faculty.findByIdAndUpdate(
       id,
       { isDeleted: true },
       { new: true }
     );
+  }
+
+  async deleteMajor(id) {
+    return await Major.findByIdAndDelete(id);
   }
 
   async getMajorsByFacultyID(facultyId) {

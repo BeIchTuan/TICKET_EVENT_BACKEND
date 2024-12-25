@@ -18,7 +18,13 @@ router.post(
   );
 
 router.get("/:facultyId/majors", facultyController.getMajorsByFacultyID);
+
 router.put("/:id", facultyController.updateFaculty);
+
+router.put("/major/:id", facultyController.updateMajor);
+
 router.delete("/:id", facultyController.deleteFaculty);
+
+router.delete("/major/:id", facultyController.deleteMajor);
 
 module.exports = router;

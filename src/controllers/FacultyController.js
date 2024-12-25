@@ -67,6 +67,21 @@ class FacultyController {
     }
   }
 
+  async updateMajor(req, res) {
+    try {
+      const { id } = req.params;
+      const updatedMajor = await facultyService.updateMajor(id, req.body);
+      if (!updatedMajor) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Major not found" });
+      }
+      res.status(200).json({ success: true, data: updatedMajor });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   async deleteFaculty(req, res) {
     try {
       const { id } = req.params;
@@ -79,6 +94,23 @@ class FacultyController {
       res
         .status(200)
         .json({ success: true, message: "Faculty deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async deleteMajor(req, res) {
+    try {
+      const { id } = req.params;
+      const deleteMajor = await facultyService.deleteMajor(id);
+      if (!deleteMajor) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Major not found" });
+      }
+      res
+        .status(200)
+        .json({ success: true, message: "Major deleted successfully" });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
