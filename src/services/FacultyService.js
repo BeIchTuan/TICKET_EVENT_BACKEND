@@ -12,7 +12,7 @@ class FacultyService {
       { $push: { faculties: savedFaculty._id } },
       { new: true }
     );
-
+    
     return savedFaculty;
   }
 

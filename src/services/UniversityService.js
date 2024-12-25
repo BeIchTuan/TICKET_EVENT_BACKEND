@@ -1,3 +1,5 @@
+const Faculty = require("../models/FacultyModel");
+const Major = require("../models/MajorModel");
 const University = require("../models/UniversityModel");
 
 class UniversityService {
@@ -9,7 +11,10 @@ class UniversityService {
 
   // Get all universities
   async getAllUniversities() {
-    return await University.find({ isDeleted: { $ne: true } });
+    return await University
+      .find({ isDeleted: { $ne: true } })
+      .select('-isDeleted -__v')
+      .populate('faculties', '_id');
   }
 
   // Get a university by ID
@@ -48,11 +53,22 @@ class UniversityService {
   }
 
   async getFacultiesByUniversity(universityId) {
-    return await University.findById(universityId).populate({
+    const faculties = await University.findById(universityId).populate({
       path: "faculties",
       match: { isDeleted: { $ne: true } },
-      select: "name _id",
+      select: "_id name",
     });
+
+    // const facultyObjectIds = faculties.toJSON().faculties.map((faculty) => faculty._id);
+    // const facultyIds = facultyObjectIds.map((faculty) => faculty.toString());
+    // console.log(facultyIds);
+    
+    // const majors = Faculty.find({majors: {$in: facultyIds}}).populate('majors');
+    // const majosJson = majors.toJSON();
+
+    // console.log(majosJson);
+    
+    return faculties;
   }
 }
 

@@ -7,7 +7,8 @@ class FacultyController {
     try {
       const { universityId, name } = req.body;
       const faculty = await FacultyService.createFaculty(universityId, { name });
-      res.status(201).json(faculty);
+      const data = faculty.toJSON();
+      res.status(201).json({ message: "Faculty created successfully", ...data });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -45,12 +46,7 @@ class FacultyController {
           .json({ success: false, message: "Faculty not found" });
       }
 
-      res.status(200).json({
-        success: true,
-        data: {
-          majors: faculty.majors,
-        },
-      });
+      res.status(200).json(faculty.majors);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

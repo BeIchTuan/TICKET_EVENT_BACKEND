@@ -8,7 +8,7 @@ const TicketController = require("../controllers/TicketController");
 
 router.get(
   "/management",
-  authMiddleware(["event_creator"]),
+  authMiddleware(["event_creator", "admin"]),
   EventController.getManagedEvents
 );
 

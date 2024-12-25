@@ -104,23 +104,11 @@ class UserService {
         filter.role = role;
       }
       const users = await User.find(filter)
-        .populate("university", "name")
-        .populate("faculty", "name")
-        .populate("major", "name");
+        .populate("university", "_id name")
+        .populate("faculty", "_id name")
+        .populate("major", "_id name");
 
-      return users.map((user) => ({
-        _id: user._id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-        avatar: user.avatar,
-        role: user.role,
-        gender: user.gender,
-        university: user.university?.name || null,
-        faculty: user.faculty?.name || null,
-        major: user.major?.name || null,
-        studentId: user.studentId,
-      }));
+      return users;
     } catch (error) {
       throw new Error(error.message);
     }
