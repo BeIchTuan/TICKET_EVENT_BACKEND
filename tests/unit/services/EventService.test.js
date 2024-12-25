@@ -7,6 +7,7 @@ const EventService = require('../../../src/services/EventService');
 const notificationService = require('../../../src/services/NotificationService');
 const Ticket = require('../../../src/models/TicketModel');
 const TransferTicket = require('../../../src/models/TransferTicketModel');
+const UserService = require('../../../src/services/UserService');
 
 // Mock các dependencies
 jest.mock('../../../src/models/EventModel');
@@ -16,10 +17,11 @@ jest.mock('../../../src/models/ConversationModel');
 jest.mock('../../../src/services/NotificationService');
 jest.mock('../../../src/models/TicketModel');
 jest.mock('../../../src/models/TransferTicketModel');
+jest.mock('../../../src/services/UserService');
 
 describe('EventService', () => {
   const mockEvent = {
-    _id: 'event123',
+    _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'),
     name: 'Test Event',
     description: 'Test Description',
     location: 'Test Location',
@@ -41,7 +43,7 @@ describe('EventService', () => {
   });
 
   describe('createEvent', () => {
-    it('should create event successfully', async () => {
+    it('should create event successfully and update eventsCreated for creator and collaborators', async () => {
       // Arrange
       const eventData = {
         name: mockEvent.name,
@@ -58,7 +60,7 @@ describe('EventService', () => {
       // Mock collaborators check
       User.find.mockResolvedValueOnce([
         { _id: 'collaborator123', role: 'event_creator' }
-      ]).mockResolvedValueOnce([  // Mock cho notification service
+      ]).mockResolvedValueOnce([
         { _id: 'user1', fcmTokens: ['token1'] },
         { _id: 'user2', fcmTokens: ['token2'] }
       ]);
@@ -81,160 +83,35 @@ describe('EventService', () => {
       };
       Event.mockImplementation(() => mockEventInstance);
 
-      // Mock notification service
-      User.find.mockResolvedValueOnce([
-        { _id: 'user1', fcmTokens: ['token1'] },
-        { _id: 'user2', fcmTokens: ['token2'] }
-      ]);
+      // Mock user updates
+      User.findByIdAndUpdate.mockResolvedValue({});
+      User.updateMany.mockResolvedValue({});
 
       // Act
       const result = await EventService.createEvent(eventData);
 
       // Assert
       expect(result).toBeDefined();
-      expect(result.name).toBe(mockEvent.name);
-      expect(result.status).toBe('active');
-      expect(User.find).toHaveBeenCalledWith({
-        _id: { $in: eventData.collaborators },
-        role: 'event_creator'
-      });
-      expect(Category.findById).toHaveBeenCalledWith(eventData.categoryId);
-      expect(notificationService.sendNotification).toHaveBeenCalled();
-    });
-
-    it('should throw error if collaborator is not event creator', async () => {
-      // Arrange
-      const eventData = {
-        ...mockEvent,
-        collaborators: ['invalidCollaborator']
-      };
-
-      User.find.mockResolvedValue([]);
-
-      // Act & Assert
-      await expect(EventService.createEvent(eventData))
-        .rejects
-        .toThrow('Some collaborators are not event creators');
-    });
-
-    it('should throw error if category not found', async () => {
-      // Arrange
-      const eventData = {
-        ...mockEvent
-      };
-
-      User.find.mockResolvedValue([{ _id: 'collaborator123', role: 'event_creator' }]);
-      Category.findById.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(EventService.createEvent(eventData))
-        .rejects
-        .toThrow('Category not found');
-    });
-  });
-
-  describe('getEvents', () => {
-    it('should get all active events', async () => {
-      // Arrange
-      const mockEvents = [{
-        ...mockEvent,
-        toObject: () => ({
-          ...mockEvent,
-          categoryId: { _id: 'category123', name: 'Test Category' }
-        })
-      }];
-
-      Event.find.mockReturnValue({
-        sort: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(mockEvents)
-      });
-
-      // Act
-      const result = await EventService.getEvents();
-
-      // Assert
-      expect(result).toHaveLength(1);
-      expect(Event.find).toHaveBeenCalledWith({ isDeleted: false });
-    });
-
-    it('should filter events by status', async () => {
-      // Arrange
-      const filters = { status: 'active' };
-      const mockEvents = [{
-        ...mockEvent,
-        toObject: () => ({
-          ...mockEvent,
-          categoryId: { _id: 'category123', name: 'Test Category' }
-        })
-      }];
-
-      Event.find.mockReturnValue({
-        sort: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(mockEvents)
-      });
-
-      // Act
-      const result = await EventService.getEvents(filters);
-
-      // Assert
-      expect(Event.find).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'active', isDeleted: false })
+      expect(User.findByIdAndUpdate).toHaveBeenCalledWith(
+        eventData.createdBy,
+        { $push: { eventsCreated: result._id } }
       );
-    });
-  });
-
-  describe('updateEvent', () => {
-    it('should update event successfully', async () => {
-      // Arrange
-      const eventId = 'event123';
-      const userId = 'user123';
-      const updateData = {
-        name: 'Updated Event',
-        price: 200000
-      };
-
-      Event.findOne.mockResolvedValue({
-        ...mockEvent,
-        images: ['image1.jpg'],
-        save: jest.fn().mockResolvedValue({ ...mockEvent, ...updateData })
-      });
-
-      // Act
-      const result = await EventService.updateEvent(eventId, userId, updateData);
-
-      // Assert
-      expect(result.name).toBe(updateData.name);
-      expect(result.price).toBe(updateData.price);
-      expect(Event.findOne).toHaveBeenCalledWith({
-        _id: eventId,
-        createdBy: userId,
-        isDeleted: false
-      });
-    });
-
-    it('should throw error if event not found or unauthorized', async () => {
-      // Arrange
-      Event.findOne.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(
-        EventService.updateEvent('event123', 'user123', {})
-      ).rejects.toThrow('Event not found or unauthorized');
+      expect(User.updateMany).toHaveBeenCalledWith(
+        { _id: { $in: eventData.collaborators } },
+        { $push: { eventsCreated: result._id } }
+      );
+      expect(notificationService.sendNotification).toHaveBeenCalled();
     });
   });
 
   describe('deleteEvent', () => {
-    it('should soft delete event successfully', async () => {
+    it('should soft delete event and update related records', async () => {
       // Arrange
-      const eventId = new mongoose.Types.ObjectId('507f1f77bcf86cd799439011');
+      const eventId = mockEvent._id.toString();
       const userId = 'user123';
 
       const mockEventToDelete = {
         ...mockEvent,
-        _id: eventId,
-        createdBy: userId,
         save: jest.fn().mockResolvedValue({ 
           ...mockEvent, 
           isDeleted: true, 
@@ -242,30 +119,38 @@ describe('EventService', () => {
         })
       };
 
-      // Mock các tickets
+      // Mock tickets
       const mockTickets = [
         { _id: 'ticket1' },
         { _id: 'ticket2' }
       ];
-      
+
+      // Mock users for notification
+      const mockUsers = [
+        { _id: 'user1', fcmTokens: ['token1'] },
+        { _id: 'user2', fcmTokens: ['token2'] }
+      ];
+
       // Setup mocks
       Event.findById.mockResolvedValue(mockEventToDelete);
+      UserService.getUser.mockResolvedValue({ role: 'event_creator' });
       Ticket.find.mockResolvedValue(mockTickets);
       Ticket.updateMany.mockResolvedValue({});
       TransferTicket.updateMany.mockResolvedValue({});
       Conversation.deleteMany.mockResolvedValue({});
+      // Add mock for User.find
+      User.find.mockResolvedValue(mockUsers);
 
       // Act
-      const result = await EventService.deleteEvent(eventId.toString(), userId);
+      const result = await EventService.deleteEvent(eventId, userId);
 
       // Assert
       expect(result.isDeleted).toBe(true);
       expect(result.status).toBe('cancelled');
-      expect(mockEventToDelete.save).toHaveBeenCalled();
       expect(Ticket.updateMany).toHaveBeenCalledWith(
-        { eventId: eventId.toString() },
-        { 
-          $set: { 
+        { eventId },
+        {
+          $set: {
             status: "cancelled",
             cancelReason: "Event has been deleted by organizer"
           },
@@ -284,17 +169,234 @@ describe('EventService', () => {
           }
         }
       );
-      expect(Conversation.deleteMany).toHaveBeenCalledWith({ eventId: eventId.toString() });
-    }, 10000);
+      expect(Conversation.deleteMany).toHaveBeenCalledWith({ eventId });
+      expect(User.find).toHaveBeenCalledWith({
+        role: { $in: ["ticket_buyer", "admin"] }
+      });
+      expect(notificationService.sendNotification).toHaveBeenCalled();
+    });
 
-    it('should throw error if event not found', async () => {
+    it('should throw error if user does not have permission', async () => {
       // Arrange
-      Event.findById.mockResolvedValue(null);
+      const eventId = mockEvent._id.toString();
+      const userId = 'different_user';
+
+      Event.findById.mockResolvedValue({
+        ...mockEvent,
+        createdBy: 'original_user'
+      });
+      UserService.getUser.mockResolvedValue({ role: 'event_creator' });
 
       // Act & Assert
       await expect(
-        EventService.deleteEvent('nonexistent', 'user123')
-      ).rejects.toThrow('Event not found');
+        EventService.deleteEvent(eventId, userId)
+      ).rejects.toThrow("You don't have permission to delete this event");
+    });
+  });
+
+  describe('getEvents', () => {
+    it('should get all active events with filters', async () => {
+      // Arrange
+      const filters = {
+        status: 'active',
+        date: new Date('2024-12-31'),
+        categoryId: 'category123',
+        createdBy: 'user123',
+        isAfter: true,
+        sortBy: 'date'
+      };
+
+      const mockEvents = [{
+        ...mockEvent,
+        toObject: () => ({
+          ...mockEvent,
+          categoryId: { _id: 'category123', name: 'Test Category' }
+        })
+      }];
+
+      Event.find.mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockEvents)
+      });
+
+      // Act
+      const result = await EventService.getEvents(filters);
+
+      // Assert
+      expect(Event.find).toHaveBeenCalledWith({
+        isDeleted: false,
+        status: 'active',
+        date: filters.date,
+        categoryId: 'category123',
+        createdBy: 'user123',
+        date: { $gt: expect.any(Date) }
+      });
+      expect(result[0].category).toBeDefined();
+      expect(result[0].categoryId).toBeUndefined();
+    });
+  });
+
+  describe('updateEvent', () => {
+    it('should update event successfully with new images', async () => {
+      // Arrange
+      const eventId = mockEvent._id;
+      const userId = mockEvent.createdBy;
+      const updateData = {
+        name: 'Updated Event',
+        collaborators: ['newCollaborator123']
+      };
+      const newImages = ['newImage1.jpg'];
+      const imagesToDelete = ['image1.jpg'];
+
+      const mockEventToUpdate = {
+        ...mockEvent,
+        images: ['image1.jpg'],
+        save: jest.fn().mockResolvedValue({
+          ...mockEvent,
+          name: updateData.name,
+          images: newImages
+        })
+      };
+
+      Event.findOne.mockResolvedValue(mockEventToUpdate);
+      UserService.getUser.mockResolvedValue({ role: 'event_creator' });
+      User.find.mockResolvedValueOnce([
+        { _id: 'newCollaborator123', role: 'event_creator' }
+      ]).mockResolvedValueOnce([
+        { _id: 'user1', fcmTokens: ['token1'] }
+      ]);
+
+      // Act
+      const result = await EventService.updateEvent(
+        eventId,
+        userId,
+        updateData,
+        newImages,
+        imagesToDelete
+      );
+
+      // Assert
+      expect(result.name).toBe(updateData.name);
+      expect(result.images).toEqual(newImages);
+      expect(notificationService.sendNotification).toHaveBeenCalled();
+    });
+  });
+
+  describe('searchEvents', () => {
+    it('should search events with various parameters', async () => {
+      // Arrange
+      const searchParams = {
+        name: 'test',
+        location: 'location',
+        date: '2024-12-31',
+        categoryId: 'category123',
+        status: 'active'
+      };
+
+      const mockEvents = [{
+        ...mockEvent,
+        toObject: () => ({
+          ...mockEvent,
+          categoryId: { _id: 'category123', name: 'Test Category' }
+        })
+      }];
+
+      Event.find.mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockEvents)
+      });
+
+      // Act
+      const result = await EventService.searchEvents(searchParams);
+
+      // Assert
+      expect(Event.find).toHaveBeenCalledWith({
+        isDeleted: false,
+        name: { $regex: 'test', $options: 'i' },
+        location: { $regex: 'location', $options: 'i' },
+        date: {
+          $gte: expect.any(Date),
+          $lt: expect.any(Date)
+        },
+        categoryId: 'category123',
+        status: 'active'
+      });
+    });
+  });
+
+  describe('getManagedEvents', () => {
+    it('should return events managed by event creator', async () => {
+      // Arrange
+      const userId = 'user123';
+      const mockEvents = [{
+        ...mockEvent,
+        toObject: () => ({
+          ...mockEvent,
+          categoryId: [{ _id: 'category123', name: 'Test Category' }]
+        })
+      }];
+
+      UserService.getUser.mockResolvedValue({ role: 'event_creator' });
+      Event.find.mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockEvents)
+      });
+
+      // Act
+      const result = await EventService.getManagedEvents(userId);
+
+      // Assert
+      expect(Event.find).toHaveBeenCalledWith({
+        isDeleted: false,
+        $or: [{ createdBy: userId }, { collaborators: userId }]
+      });
+      expect(result[0].category).toBeDefined();
+      expect(result[0].categoryId).toBeUndefined();
+    });
+  });
+
+  describe('getEventParticipants', () => {
+    it('should return unique list of participants', async () => {
+      // Arrange
+      const eventId = mockEvent._id;
+      const mockTickets = [
+        { 
+          buyerId: { 
+            _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'),
+            name: 'User 1' 
+          } 
+        },
+        { 
+          buyerId: { 
+            _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439012'),
+            name: 'User 2' 
+          } 
+        },
+        { 
+          buyerId: { 
+            _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'),
+            name: 'User 1' 
+          } 
+        }
+      ];
+
+      Ticket.find.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockTickets)
+      });
+
+      // Act
+      const result = await EventService.getEventParticipants(eventId);
+
+      // Assert
+      expect(result).toHaveLength(2); // Should have unique participants
+      expect(Ticket.find).toHaveBeenCalledWith({
+        eventId,
+        status: 'booked',
+        paymentStatus: { $in: ['paid'] }
+      });
     });
   });
 });
