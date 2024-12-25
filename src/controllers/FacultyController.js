@@ -18,7 +18,7 @@ class FacultyController {
     try {
       const { facultyId, name } = req.body;
       const major = await FacultyService.createMajor(facultyId, { name });
-      res.status(201).json(major);
+      res.status(201).json({ message: "Created major", major });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -76,7 +76,7 @@ class FacultyController {
           .status(404)
           .json({ success: false, message: "Major not found" });
       }
-      res.status(200).json({ success: true, data: updatedMajor });
+      res.status(200).json({ message: "Update success", updatedMajor });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
