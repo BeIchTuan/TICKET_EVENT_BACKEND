@@ -74,7 +74,7 @@ describe('AuthService', () => {
 
       // Assert
       expect(result.status).toBe('error');
-      expect(result.message).toBe('The email and role already exists');
+      expect(result.message).toBe('The email already exists');
     });
   });
 
