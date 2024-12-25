@@ -6,9 +6,15 @@ const { uploadToCloudinary } = require("../utils/UploadImage");
 class UserController {
   async updateUser(req, res) {
     try {
-      const userId = req.id;
-
+      let userId = req.id;
+      
       const data = req.body;
+
+      if (data.senderRole === "admin") {
+        if (data.userId !== req.id) {
+          userId = data.userId;
+        }
+      }
 
       if (!userId) {
         return res.status(400).json({
@@ -36,6 +42,8 @@ class UserController {
 
       return res.status(200).json(response.data);
     } catch (error) {
+      console.log(error);
+      
       return res.status(500).json({
         message: "Internal server error",
         error: error.toString(),
