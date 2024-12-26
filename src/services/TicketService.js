@@ -391,66 +391,130 @@ class TicketService {
     }
   }
 
-  static async checkInByStudentId(bookingCode, studentId, checkInBy) {
+  static async checkInByStudentId(studentId, checkInBy) {
     try {
-      // Tìm vé và populate thông tin cần thiết
-      const ticket = await Ticket.findOne({ bookingCode })
-        .populate("eventId")
-        .populate("buyerId");
+      // 1. Kiểm tra user
+      const user = await User.findOne({ studentId });
+      console.log("1. Found user:", {
+        exists: !!user,
+        userId: user?._id,
+        studentId
+      });
 
-      if (!ticket) {
-        throw new Error("Ticket not found");
+      if (!user) {
+        throw new Error("Student ID not found");
       }
 
-      // Kiểm tra MSSV của người mua vé
-      if (!ticket.buyerId.studentId) {
-        throw new Error("Ticket owner does not have a student ID");
+      // 2. Tìm tất cả vé của user
+      const tickets = await Ticket.find({
+        buyerId: user._id,
+        status: 'booked',
+        paymentStatus: 'paid'
+      }).populate({
+        path: 'eventId',
+        match: { status: 'active' }
+      });
+
+      console.log("2. Found tickets:", {
+        count: tickets.length,
+        ticketIds: tickets.map(t => t._id.toString())
+      });
+
+      // 3. Lọc vé có event hợp lệ
+      const validTickets = tickets.filter(ticket => ticket.eventId);
+      
+      console.log("3. Valid tickets:", {
+        count: validTickets.length,
+        tickets: validTickets.map(t => ({
+          ticketId: t._id.toString(),
+          eventId: t.eventId._id.toString(),
+          eventName: t.eventId.name,
+          eventDate: t.eventId.date,
+          eventStatus: t.eventId.status
+        }))
+      });
+
+      if (!validTickets.length) {
+        throw new Error("No valid tickets found for this student ID");
       }
 
-      // Kiểm tra MSSV có khớp không
-      if (ticket.buyerId.studentId !== studentId) {
-        throw new Error("Student ID does not match ticket owner");
+      // 4. Tìm vé phù hợp với th���i gian check-in
+      const currentTime = new Date();
+      let selectedTicket = null;
+      let minTimeDiff = Infinity;
+
+      for (const ticket of validTickets) {
+        const eventTime = new Date(ticket.eventId.date);
+        const timeDiff = Math.abs(eventTime - currentTime);
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+        console.log("4. Checking ticket timing:", {
+          ticketId: ticket._id.toString(),
+          eventTime: eventTime.toISOString(),
+          currentTime: currentTime.toISOString(),
+          hoursDiff,
+          isWithinRange: hoursDiff <= 1 // Giới hạn 1 giờ trước và sau
+        });
+
+        // Chỉ cho phép check-in trong khoảng ±1 giờ
+        if (hoursDiff <= 1) { // Giới hạn 1 giờ trước và sau
+          if (timeDiff < minTimeDiff) {
+            minTimeDiff = timeDiff;
+            selectedTicket = ticket;
+          }
+        }
       }
 
-      // Kiểm tra trạng thái vé
-      if (ticket.status === "checked-in") {
-        throw new Error("Ticket already checked-in");
+      if (!selectedTicket) {
+        throw new Error("No events available for check-in at this time. Please check-in within 1 hour before or after the event start time.");
       }
 
-      if (ticket.paymentStatus !== "paid") {
-        throw new Error("Ticket payment not completed");
-      }
+      console.log("5. Selected ticket for check-in:", {
+        ticketId: selectedTicket._id.toString(),
+        eventId: selectedTicket.eventId._id.toString(),
+        eventName: selectedTicket.eventId.name,
+        eventTime: new Date(selectedTicket.eventId.date).toISOString(),
+        timeDiff: minTimeDiff
+      });
 
       // Kiểm tra quyền check-in
-      const isOrganizer = ticket.eventId.createdBy.toString() === checkInBy;
-      const isCollaborator = ticket.eventId.collaborators.some(
+      const isOrganizer = selectedTicket.eventId.createdBy.toString() === checkInBy;
+      const isCollaborator = selectedTicket.eventId.collaborators.some(
         (collaborator) => collaborator.toString() === checkInBy
       );
+
+      console.log("6. Permission check:", {
+        checkInBy,
+        isOrganizer,
+        isCollaborator,
+        createdBy: selectedTicket.eventId.createdBy,
+        collaborators: selectedTicket.eventId.collaborators
+      });
 
       if (!isOrganizer && !isCollaborator) {
         throw new Error("You don't have permission to check-in this ticket");
       }
 
       // Cập nhật trạng thái vé
-      ticket.status = "checked-in";
-      ticket.checkInTime = new Date();
-      ticket.checkedInBy = checkInBy;
-      await ticket.save();
+      selectedTicket.status = "checked-in";
+      selectedTicket.checkInTime = currentTime;
+      selectedTicket.checkedInBy = checkInBy;
+      await selectedTicket.save();
 
       // Gửi thông báo
-      if (ticket.buyerId?.fcmTokens?.length) {
-        const tokens = ticket.buyerId.fcmTokens.filter(Boolean);
+      if (user.fcmTokens?.length) {
+        const tokens = user.fcmTokens.filter(Boolean);
         const title = "Check-in Successfully";
-        const body = `Thanks for joining the event. Wish you have a great experience! 🎉`;
+        const body = `Thanks for joining ${selectedTicket.eventId.name}. Wish you have a great experience! 🎉`;
         const data = {
           type: "check_in",
-          ticketId: ticket._id.toString(),
-          eventId: ticket.eventId._id.toString(),
+          ticketId: selectedTicket._id.toString(),
+          eventId: selectedTicket.eventId._id.toString(),
         };
 
         await notificationService.sendNotification(tokens, title, body, data);
         await notificationService.saveNotification(
-          ticket.buyerId._id,
+          user._id,
           "check_in",
           title,
           body,
@@ -458,8 +522,14 @@ class TicketService {
         );
       }
 
-      return ticket;
+      return selectedTicket;
     } catch (error) {
+      console.error('CheckIn Error:', {
+        error: error.message,
+        studentId,
+        checkInBy,
+        time: new Date().toISOString()
+      });
       throw error;
     }
   }

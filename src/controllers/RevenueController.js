@@ -16,7 +16,6 @@ class RevenueController {
       });
 
       return res.status(200).json({
-        status: "success",
         chartData: result.chartData,
         total: result.total,
       });
@@ -46,7 +45,6 @@ class RevenueController {
       });
 
       return res.status(200).json({
-        status: "success",
         chartData: result.chartData,
         total: result.total,
       });
