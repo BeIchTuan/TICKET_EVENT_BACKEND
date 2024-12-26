@@ -104,6 +104,24 @@ class AuthController {
       });
     }
   }
+
+  async resetPassword(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Email is required" });
+      }
+
+      const result = await AuthService.resetPassword(email);
+      return res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      console.error("Error in PasswordController:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new AuthController();

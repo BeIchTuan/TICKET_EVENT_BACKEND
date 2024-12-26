@@ -9,4 +9,6 @@ router.post("/login", AuthController.loginUser);
 router.post('/fcm-token', authMiddleware(), FCMTokenController.saveToken);
 router.delete('/fcm-token', authMiddleware(), FCMTokenController.deleteToken);
 
+router.put("/forget-password", AuthController.resetPassword);
+
 module.exports = router;
