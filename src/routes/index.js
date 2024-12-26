@@ -9,6 +9,7 @@ const categoryRouter = require('./CategoryRouter');
 const conversationRouter = require('./ConversationRouter');
 const messageRouter = require('./MessageRouter');
 const NotificationRouter = require('./NotificationRouter');
+const RevenueRouter = require('./RevenueRouter');
 
 const routes = (app) => {
   app.use("/api/payment", paymentRoutes);
@@ -22,6 +23,7 @@ const routes = (app) => {
   app.use('/api/conversations', conversationRouter)
   app.use('/api/messages', messageRouter)
   app.use('/api/notifications', NotificationRouter)
+  app.use('/api/revenues', RevenueRouter)
 };
 
 module.exports = routes;
