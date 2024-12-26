@@ -25,6 +25,11 @@ class UserService {
         data.avatar = user.avatar; // Keep the old avatar if no new avatar provided
       }
 
+      // hash password if provided
+      if (data.password) {
+        data.password = await bcrypt.hash(data.password, 10);
+      }
+
       Object.assign(user, data);
       await user.save();
 
