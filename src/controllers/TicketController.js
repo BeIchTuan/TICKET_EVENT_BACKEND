@@ -429,19 +429,18 @@ class TicketController {
 
   static async checkInByStudentId(req, res) {
     try {
-      const { studentId, bookingCode } = req.body;
-      const checkInBy = req.id; // ID của người tổ chức từ token
+      const { studentId } = req.body;
+      const checkInBy = req.id;
 
       // Validate input
-      if (!studentId || !bookingCode) {
+      if (!studentId) {
         return res.status(400).json({
           status: "error",
-          message: "Student ID and booking code are required",
+          message: "Student ID is required",
         });
       }
 
       const ticket = await TicketService.checkInByStudentId(
-        bookingCode,
         studentId,
         checkInBy
       );
@@ -454,6 +453,8 @@ class TicketController {
           event: {
             _id: ticket.eventId._id,
             name: ticket.eventId.name,
+            date: ticket.eventId.date,
+            location: ticket.eventId.location
           },
           buyer: {
             _id: ticket.buyerId._id,

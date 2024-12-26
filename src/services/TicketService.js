@@ -391,39 +391,71 @@ class TicketService {
     }
   }
 
-  static async checkInByStudentId(bookingCode, studentId, checkInBy) {
+  static async checkInByStudentId(studentId, checkInBy) {
     try {
-      // Tìm vé và populate thông tin cần thiết
-      const ticket = await Ticket.findOne({ bookingCode })
-        .populate("eventId")
-        .populate("buyerId");
+      // Lấy thời gian hiện tại
+      const now = new Date();
+      const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(now.setHours(23, 59, 59, 999));
 
-      if (!ticket) {
-        throw new Error("Ticket not found");
+      // Tìm user với studentId
+      const user = await User.findOne({ studentId });
+      if (!user) {
+        throw new Error("Student ID not found");
       }
 
-      // Kiểm tra MSSV của người mua vé
-      if (!ticket.buyerId.studentId) {
-        throw new Error("Ticket owner does not have a student ID");
+      // Tìm tất cả vé của user trong ngày
+      const tickets = await Ticket.find({
+        buyerId: user._id,
+        status: 'booked',
+        paymentStatus: 'paid'
+      })
+      .populate({
+        path: 'eventId',
+        match: {
+          date: {
+            $gte: startOfDay,
+            $lte: endOfDay
+          },
+          status: 'active'
+        }
+      })
+      .populate('buyerId');
+
+      // Lọc bỏ các ticket không có eventId (do match condition)
+      const validTickets = tickets.filter(ticket => ticket.eventId);
+      
+      if (!validTickets.length) {
+        throw new Error("No valid tickets found for this student ID today");
       }
 
-      // Kiểm tra MSSV có khớp không
-      if (ticket.buyerId.studentId !== studentId) {
-        throw new Error("Student ID does not match ticket owner");
+      // Tìm vé có thời gian sự kiện gần với thời điểm check-in nhất
+      // và trong khoảng ±1 giờ
+      const currentTime = new Date();
+      let selectedTicket = null;
+      let minTimeDiff = Infinity;
+
+      for (const ticket of validTickets) {
+        const eventTime = new Date(ticket.eventId.date);
+        const timeDiff = Math.abs(eventTime - currentTime);
+        const hoursDiff = timeDiff / (1000 * 60 * 60); // Convert to hours
+
+        // Chỉ xét các sự kiện trong khoảng ±1 giờ
+        if (hoursDiff <= 1) {
+          if (timeDiff < minTimeDiff) {
+            minTimeDiff = timeDiff;
+            selectedTicket = ticket;
+          }
+        }
       }
 
-      // Kiểm tra trạng thái vé
-      if (ticket.status === "checked-in") {
-        throw new Error("Ticket already checked-in");
-      }
-
-      if (ticket.paymentStatus !== "paid") {
-        throw new Error("Ticket payment not completed");
+      if (!selectedTicket) {
+        throw new Error("No events available for check-in at this time. Please check-in within 1 hour before or after the event start time.");
       }
 
       // Kiểm tra quyền check-in
-      const isOrganizer = ticket.eventId.createdBy.toString() === checkInBy;
-      const isCollaborator = ticket.eventId.collaborators.some(
+      const isOrganizer = selectedTicket.eventId.createdBy.toString() === checkInBy;
+      const isCollaborator = selectedTicket.eventId.collaborators.some(
         (collaborator) => collaborator.toString() === checkInBy
       );
 
@@ -432,25 +464,25 @@ class TicketService {
       }
 
       // Cập nhật trạng thái vé
-      ticket.status = "checked-in";
-      ticket.checkInTime = new Date();
-      ticket.checkedInBy = checkInBy;
-      await ticket.save();
+      selectedTicket.status = "checked-in";
+      selectedTicket.checkInTime = new Date();
+      selectedTicket.checkedInBy = checkInBy;
+      await selectedTicket.save();
 
       // Gửi thông báo
-      if (ticket.buyerId?.fcmTokens?.length) {
-        const tokens = ticket.buyerId.fcmTokens.filter(Boolean);
+      if (user.fcmTokens?.length) {
+        const tokens = user.fcmTokens.filter(Boolean);
         const title = "Check-in Successfully";
-        const body = `Thanks for joining the event. Wish you have a great experience! 🎉`;
+        const body = `Thanks for joining ${selectedTicket.eventId.name}. Wish you have a great experience! 🎉`;
         const data = {
           type: "check_in",
-          ticketId: ticket._id.toString(),
-          eventId: ticket.eventId._id.toString(),
+          ticketId: selectedTicket._id.toString(),
+          eventId: selectedTicket.eventId._id.toString(),
         };
 
         await notificationService.sendNotification(tokens, title, body, data);
         await notificationService.saveNotification(
-          ticket.buyerId._id,
+          user._id,
           "check_in",
           title,
           body,
@@ -458,8 +490,14 @@ class TicketService {
         );
       }
 
-      return ticket;
+      return selectedTicket;
     } catch (error) {
+      console.error('CheckIn Error:', {
+        error: error.message,
+        studentId,
+        checkInBy,
+        time: new Date()
+      });
       throw error;
     }
   }
