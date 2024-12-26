@@ -31,7 +31,7 @@ class EventService {
       }
 
       // Validate date (sử dụng thời gian hiện tại theo GMT+7)
-      const currentTimeGMT7 = new Date(Date.now() + GMT7_OFFSET);
+      const currentTimeGMT7 = new Date(Date.now());
       if (eventData.date < currentTimeGMT7) {
         throw new Error("Event date must be in the future");
       }
