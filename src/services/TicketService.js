@@ -392,7 +392,15 @@ class TicketService {
   }
 
   static async checkInByStudentId(studentId, checkInBy) {
+    const GMT7_OFFSET = 7 * 60 * 60 * 1000; // 7 giờ tính bằng milliseconds
     try {
+      // Lấy thời gian hiện tại theo GMT+7
+      const currentTime = new Date();
+      console.log("Current time:", {
+        utc: currentTime.toISOString(),
+        gmt7: new Date(currentTime.getTime() + GMT7_OFFSET).toISOString()
+      });
+
       // 1. Kiểm tra user
       const user = await User.findOne({ studentId });
       console.log("1. Found user:", {
@@ -438,8 +446,7 @@ class TicketService {
         throw new Error("No valid tickets found for this student ID");
       }
 
-      // 4. Tìm vé phù hợp với th���i gian check-in
-      const currentTime = new Date();
+      // 5. Tìm vé phù hợp với thời gian check-in
       let selectedTicket = null;
       let minTimeDiff = Infinity;
 
@@ -448,32 +455,32 @@ class TicketService {
         const timeDiff = Math.abs(eventTime - currentTime);
         const hoursDiff = timeDiff / (1000 * 60 * 60);
 
-        console.log("4. Checking ticket timing:", {
-          ticketId: ticket._id.toString(),
+        console.log("5. Checking ticket:", {
+          ticketId: ticket._id,
           eventTime: eventTime.toISOString(),
+          eventTimeGMT7: new Date(eventTime.getTime() + GMT7_OFFSET).toISOString(),
           currentTime: currentTime.toISOString(),
+          currentTimeGMT7: new Date(currentTime.getTime() + GMT7_OFFSET).toISOString(),
           hoursDiff,
-          isWithinRange: hoursDiff <= 1 // Giới hạn 1 giờ trước và sau
+          isWithinRange: hoursDiff <= 2
         });
 
-        // Chỉ cho phép check-in trong khoảng ±1 giờ
-        if (hoursDiff <= 1) { // Giới hạn 1 giờ trước và sau
-          if (timeDiff < minTimeDiff) {
-            minTimeDiff = timeDiff;
-            selectedTicket = ticket;
-          }
+        if (hoursDiff <= 2 && timeDiff < minTimeDiff) {
+          minTimeDiff = timeDiff;
+          selectedTicket = ticket;
         }
       }
 
       if (!selectedTicket) {
-        throw new Error("No events available for check-in at this time. Please check-in within 1 hour before or after the event start time.");
+        throw new Error("No events available for check-in at this time. Please check-in within 2 hours before or after the event start time.");
       }
 
-      console.log("5. Selected ticket for check-in:", {
-        ticketId: selectedTicket._id.toString(),
-        eventId: selectedTicket.eventId._id.toString(),
+      console.log("6. Selected ticket:", {
+        ticketId: selectedTicket._id,
+        eventId: selectedTicket.eventId._id,
         eventName: selectedTicket.eventId.name,
         eventTime: new Date(selectedTicket.eventId.date).toISOString(),
+        eventTimeGMT7: new Date(new Date(selectedTicket.eventId.date).getTime() + GMT7_OFFSET).toISOString(),
         timeDiff: minTimeDiff
       });
 
@@ -528,7 +535,8 @@ class TicketService {
         error: error.message,
         studentId,
         checkInBy,
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
+        timeGMT7: new Date(Date.now() + GMT7_OFFSET).toISOString()
       });
       throw error;
     }

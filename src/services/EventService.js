@@ -16,6 +16,26 @@ class EventService {
     try {
       console.log("Input eventData:", JSON.stringify(eventData, null, 2));
 
+      // Chuyển đổi thời gian từ GMT+7 sang UTC khi lưu vào database
+      const GMT7_OFFSET = 7 * 60 * 60 * 1000;
+      if (eventData.date) {
+        const localDate = new Date(eventData.date);
+        const utcDate = new Date(localDate.getTime() - GMT7_OFFSET);
+        eventData.date = utcDate;
+
+        console.log("Event time conversion:", {
+          inputDate: localDate.toISOString(),
+          storedDate: utcDate.toISOString(),
+          localTimeGMT7: new Date(utcDate.getTime() + GMT7_OFFSET).toISOString()
+        });
+      }
+
+      // Validate date (sử dụng thời gian hiện tại theo GMT+7)
+      const currentTimeGMT7 = new Date(Date.now() + GMT7_OFFSET);
+      if (eventData.date < currentTimeGMT7) {
+        throw new Error("Event date must be in the future");
+      }
+
       // Kiểm tra collaborators có role event_creator
       if (eventData.collaborators?.length) {
         const collaborators = await User.find({
@@ -32,12 +52,6 @@ class EventService {
       const category = await Category.findById(eventData.categoryId);
       if (!category) {
         throw new Error("Category not found");
-      }
-
-      // Validate date
-      const eventDate = new Date(eventData.date);
-      if (eventDate < new Date()) {
-        throw new Error("Event date must be in the future");
       }
 
       // Validate price and maxAttendees
@@ -132,11 +146,23 @@ class EventService {
     try {
       const query = { isDeleted: false };
 
+      // Chuyển đổi filter date sang UTC nếu có
+      if (filters.date) {
+        const GMT7_OFFSET = 7 * 60 * 60 * 1000;
+        const localDate = new Date(filters.date);
+        query.date = new Date(localDate.getTime() - GMT7_OFFSET);
+      }
+
+      // Nếu lọc các event trong tương lai, sử dụng thời gian GMT+7
+      if (filters.isAfter) {
+        const GMT7_OFFSET = 7 * 60 * 60 * 1000;
+        const currentTimeGMT7 = new Date(Date.now() + GMT7_OFFSET);
+        query.date = { $gt: new Date(currentTimeGMT7.getTime() - GMT7_OFFSET) };
+      }
+
       if (filters.status) query.status = filters.status;
-      if (filters.date) query.date = filters.date;
       if (filters.categoryId) query.categoryId = filters.categoryId;
       if (filters.createdBy) query.createdBy = filters.createdBy;
-      if (filters.isAfter) query.date = { $gt: new Date() };
 
       let sortOptions = { createdAt: -1 };
       if (filters.sortBy) {
@@ -393,6 +419,27 @@ class EventService {
       console.log("Search query:", searchParams);
       const query = { isDeleted: false };
 
+      // Chuyển đổi ngày tìm kiếm sang UTC
+      if (searchParams.date) {
+        const GMT7_OFFSET = 7 * 60 * 60 * 1000;
+        const searchDate = new Date(searchParams.date);
+        const startOfDayUTC = new Date(searchDate.setHours(0, 0, 0, 0) - GMT7_OFFSET);
+        const endOfDayUTC = new Date(searchDate.setHours(23, 59, 59, 999) - GMT7_OFFSET);
+        
+        query.date = {
+          $gte: startOfDayUTC,
+          $lt: endOfDayUTC
+        };
+
+        console.log("Search date range:", {
+          searchDate: searchDate.toISOString(),
+          startUTC: startOfDayUTC.toISOString(),
+          endUTC: endOfDayUTC.toISOString(),
+          startGMT7: new Date(startOfDayUTC.getTime() + GMT7_OFFSET).toISOString(),
+          endGMT7: new Date(endOfDayUTC.getTime() + GMT7_OFFSET).toISOString()
+        });
+      }
+
       // Tìm kiếm theo tên sự kiện (không phân biệt hoa thường)
       if (searchParams.name) {
         query.name = { $regex: searchParams.name, $options: "i" };
@@ -400,16 +447,6 @@ class EventService {
       // Tìm kiếm theo địa điểm (không phân biệt hoa thường)
       if (searchParams.location) {
         query.location = { $regex: searchParams.location, $options: "i" };
-      }
-      // Tìm kiếm theo ngày
-      if (searchParams.date) {
-        // Chuyển đổi ngày thành đối tượng Date
-        const searchDate = new Date(searchParams.date);
-        // Tìm các sự kiện trong cùng ngày
-        query.date = {
-          $gte: new Date(searchDate.setHours(0, 0, 0, 0)),
-          $lt: new Date(searchDate.setHours(23, 59, 59, 999))
-        };
       }
       // Tìm kiếm theo category
       if (searchParams.categoryId) {
