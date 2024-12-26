@@ -65,8 +65,11 @@ class UserService {
   async getUser(id) {
     try {
       const user = await User.findOne({ _id: id, isDeleted: false })
+      .select("-password -isDeleted -createdAt -updatedAt -__v -accessToken -fcmTokens")
         .populate("university", "_id name")
         .populate("faculty", "_id name")
+        .populate("ticketsBought", "_id")
+        .populate("eventsCreated", "_id")
         .populate("major", "_id name");
 
       if (!user) {
