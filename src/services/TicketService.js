@@ -393,44 +393,52 @@ class TicketService {
 
   static async checkInByStudentId(studentId, checkInBy) {
     try {
-      // Lấy thời gian hiện tại
-      const now = new Date();
-      const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(now.setHours(23, 59, 59, 999));
-
-      // Tìm user với studentId
+      // 1. Kiểm tra user
       const user = await User.findOne({ studentId });
+      console.log("1. Found user:", {
+        exists: !!user,
+        userId: user?._id,
+        studentId
+      });
+
       if (!user) {
         throw new Error("Student ID not found");
       }
 
-      // Tìm tất cả vé của user trong ngày
+      // 2. Tìm tất cả vé của user
       const tickets = await Ticket.find({
         buyerId: user._id,
         status: 'booked',
         paymentStatus: 'paid'
-      })
-      .populate({
+      }).populate({
         path: 'eventId',
-        match: {
-          date: {
-            $gte: startOfDay,
-            $lte: endOfDay
-          },
-          status: 'active'
-        }
-      })
-      .populate('buyerId');
+        match: { status: 'active' }
+      });
 
-      // Lọc bỏ các ticket không có eventId (do match condition)
+      console.log("2. Found tickets:", {
+        count: tickets.length,
+        ticketIds: tickets.map(t => t._id.toString())
+      });
+
+      // 3. Lọc vé có event hợp lệ
       const validTickets = tickets.filter(ticket => ticket.eventId);
       
+      console.log("3. Valid tickets:", {
+        count: validTickets.length,
+        tickets: validTickets.map(t => ({
+          ticketId: t._id.toString(),
+          eventId: t.eventId._id.toString(),
+          eventName: t.eventId.name,
+          eventDate: t.eventId.date,
+          eventStatus: t.eventId.status
+        }))
+      });
+
       if (!validTickets.length) {
-        throw new Error("No valid tickets found for this student ID today");
+        throw new Error("No valid tickets found for this student ID");
       }
 
-      // Tìm vé có thời gian sự kiện gần với thời điểm check-in nhất
-      // và trong khoảng ±1 giờ
+      // 4. Tìm vé phù hợp với th���i gian check-in
       const currentTime = new Date();
       let selectedTicket = null;
       let minTimeDiff = Infinity;
@@ -438,10 +446,18 @@ class TicketService {
       for (const ticket of validTickets) {
         const eventTime = new Date(ticket.eventId.date);
         const timeDiff = Math.abs(eventTime - currentTime);
-        const hoursDiff = timeDiff / (1000 * 60 * 60); // Convert to hours
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
 
-        // Chỉ xét các sự kiện trong khoảng ±1 giờ
-        if (hoursDiff <= 1) {
+        console.log("4. Checking ticket timing:", {
+          ticketId: ticket._id.toString(),
+          eventTime: eventTime.toISOString(),
+          currentTime: currentTime.toISOString(),
+          hoursDiff,
+          isWithinRange: hoursDiff <= 1 // Giới hạn 1 giờ trước và sau
+        });
+
+        // Chỉ cho phép check-in trong khoảng ±1 giờ
+        if (hoursDiff <= 1) { // Giới hạn 1 giờ trước và sau
           if (timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             selectedTicket = ticket;
@@ -453,11 +469,27 @@ class TicketService {
         throw new Error("No events available for check-in at this time. Please check-in within 1 hour before or after the event start time.");
       }
 
+      console.log("5. Selected ticket for check-in:", {
+        ticketId: selectedTicket._id.toString(),
+        eventId: selectedTicket.eventId._id.toString(),
+        eventName: selectedTicket.eventId.name,
+        eventTime: new Date(selectedTicket.eventId.date).toISOString(),
+        timeDiff: minTimeDiff
+      });
+
       // Kiểm tra quyền check-in
       const isOrganizer = selectedTicket.eventId.createdBy.toString() === checkInBy;
       const isCollaborator = selectedTicket.eventId.collaborators.some(
         (collaborator) => collaborator.toString() === checkInBy
       );
+
+      console.log("6. Permission check:", {
+        checkInBy,
+        isOrganizer,
+        isCollaborator,
+        createdBy: selectedTicket.eventId.createdBy,
+        collaborators: selectedTicket.eventId.collaborators
+      });
 
       if (!isOrganizer && !isCollaborator) {
         throw new Error("You don't have permission to check-in this ticket");
@@ -465,7 +497,7 @@ class TicketService {
 
       // Cập nhật trạng thái vé
       selectedTicket.status = "checked-in";
-      selectedTicket.checkInTime = new Date();
+      selectedTicket.checkInTime = currentTime;
       selectedTicket.checkedInBy = checkInBy;
       await selectedTicket.save();
 
@@ -496,7 +528,7 @@ class TicketService {
         error: error.message,
         studentId,
         checkInBy,
-        time: new Date()
+        time: new Date().toISOString()
       });
       throw error;
     }
