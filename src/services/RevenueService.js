@@ -132,8 +132,10 @@ class RevenueService {
     const ticketMatch = {
       eventId: { $in: eventIds },
       isDeleted: false,
-      paymentStatus: "paid",
+      status: "booked"
     };
+
+    console.log(ticketMatch)
 
     if (startDate) {
       ticketMatch.createdAt = { $gte: new Date(startDate) };
