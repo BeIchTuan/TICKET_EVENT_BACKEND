@@ -273,7 +273,7 @@ class TicketController {
         buyer: {
           _id: ticket.buyerId._id,
           name: ticket.buyerId.name,
-          avatar: ticket.buyerId.name,
+          avatar: ticket.buyerId.avatar,
         },
         checkInTime: ticket.checkInTime,
         checkedInBy: ticket.checkedInBy,
@@ -446,25 +446,40 @@ class TicketController {
       );
 
       return res.status(200).json({
-        status: "success",
-        message: "Check-in successful",
-        data: {
-          _id: ticket._id,
-          event: {
-            _id: ticket.eventId._id,
-            name: ticket.eventId.name,
-            date: ticket.eventId.date,
-            location: ticket.eventId.location
-          },
-          buyer: {
-            _id: ticket.buyerId._id,
-            name: ticket.buyerId.name,
-            studentId: ticket.buyerId.studentId,
-          },
-          checkInTime: ticket.checkInTime,
-          checkedInBy: ticket.checkedInBy,
+        _id: ticket._id,
+        event: {
+          _id: ticket.eventId._id,
+          name: ticket.eventId.name,
         },
+        buyer: {
+          _id: ticket.buyerId._id,
+          name: ticket.buyerId.name,
+          avatar: ticket.buyerId.avatar,
+        },
+        checkInTime: ticket.checkInTime,
+        checkedInBy: ticket.checkedInBy,
       });
+
+      // return res.status(200).json({
+      //   status: "success",
+      //   message: "Check-in successful",
+      //   data: {
+      //     _id: ticket._id,
+      //     event: {
+      //       _id: ticket.eventId._id,
+      //       name: ticket.eventId.name,
+      //       date: ticket.eventId.date,
+      //       location: ticket.eventId.location
+      //     },
+      //     buyer: {
+      //       _id: ticket.buyerId._id,
+      //       name: ticket.buyerId.name,
+      //       studentId: ticket.buyerId.studentId,
+      //     },
+      //     checkInTime: ticket.checkInTime,
+      //     checkedInBy: ticket.checkedInBy,
+      //   },
+      // });
     } catch (error) {
       console.error("Check-in error:", error);
       res.status(error.message.includes("permission") ? 403 : 400).json({
