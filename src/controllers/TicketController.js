@@ -467,10 +467,8 @@ class TicketController {
           _id: populatedTicket.buyerId._id,
           name: populatedTicket.buyerId.name,
           avatar: populatedTicket.buyerId.avatar,
-          email: populatedTicket.buyerId.email,
-          studentId: populatedTicket.buyerId.studentId
         },
-        checkInTime: populatedTicket.checkInTime,
+        checkInTime: new Date(),
         checkedInBy: populatedTicket.checkedInBy,
       });
 
