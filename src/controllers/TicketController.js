@@ -29,7 +29,7 @@ class TicketController {
 
       // Kiểm tra nếu vé miễn phí (price = 0 hoặc null)
       if (!event.price || event.price === 0) {
-        // Cập nhật trạng thái thanh toán thành công ngay lập tức
+        // Cập nhật trạng thái thanh toán th��nh công ngay lập tức
         ticket.paymentStatus = "paid";
         await ticket.save();
 
@@ -440,46 +440,40 @@ class TicketController {
         });
       }
 
+      // Lấy ticket và populate thông tin buyer
       const ticket = await TicketService.checkInByStudentId(
         studentId,
         checkInBy
       );
 
+      // Đảm bảo ticket được populate đầy đủ thông tin
+      const populatedTicket = await Ticket.findById(ticket._id)
+        .populate({
+          path: 'eventId',
+          select: 'name'
+        })
+        .populate({
+          path: 'buyerId',
+          select: 'name avatar email studentId'
+        });
+
       return res.status(200).json({
-        _id: ticket._id,
+        _id: populatedTicket._id,
         event: {
-          _id: ticket.eventId._id,
-          name: ticket.eventId.name,
+          _id: populatedTicket.eventId._id,
+          name: populatedTicket.eventId.name,
         },
         buyer: {
-          _id: ticket.buyerId._id,
-          name: ticket.buyerId.name,
-          avatar: ticket.buyerId.avatar,
+          _id: populatedTicket.buyerId._id,
+          name: populatedTicket.buyerId.name,
+          avatar: populatedTicket.buyerId.avatar,
+          email: populatedTicket.buyerId.email,
+          studentId: populatedTicket.buyerId.studentId
         },
-        checkInTime: ticket.checkInTime,
-        checkedInBy: ticket.checkedInBy,
+        checkInTime: populatedTicket.checkInTime,
+        checkedInBy: populatedTicket.checkedInBy,
       });
 
-      // return res.status(200).json({
-      //   status: "success",
-      //   message: "Check-in successful",
-      //   data: {
-      //     _id: ticket._id,
-      //     event: {
-      //       _id: ticket.eventId._id,
-      //       name: ticket.eventId.name,
-      //       date: ticket.eventId.date,
-      //       location: ticket.eventId.location
-      //     },
-      //     buyer: {
-      //       _id: ticket.buyerId._id,
-      //       name: ticket.buyerId.name,
-      //       studentId: ticket.buyerId.studentId,
-      //     },
-      //     checkInTime: ticket.checkInTime,
-      //     checkedInBy: ticket.checkedInBy,
-      //   },
-      // });
     } catch (error) {
       console.error("Check-in error:", error);
       res.status(error.message.includes("permission") ? 403 : 400).json({
