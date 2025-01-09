@@ -392,61 +392,51 @@ class TicketService {
   }
 
   static async checkInByStudentId(studentId, checkInBy) {
-    const GMT7_OFFSET = 7 * 60 * 60 * 1000; // 7 giờ tính bằng milliseconds
+    const GMT7_OFFSET = 7 * 60 * 60 * 1000;
     try {
-      // Lấy thời gian hiện tại theo GMT+7
       const currentTime = new Date();
-      console.log("Current time:", {
-        utc: currentTime.toISOString(),
-        gmt7: new Date(currentTime.getTime() + GMT7_OFFSET).toISOString()
+      
+      // 1. Tìm user và populate ticketsBought
+      const user = await User.findOne({ studentId }).populate({
+        path: 'ticketsBought',
+        match: { 
+          status: 'booked',
+          paymentStatus: 'paid'
+        },
+        populate: {
+          path: 'eventId',
+          match: { status: 'active' }
+        }
       });
 
-      // 1. Kiểm tra user
-      const user = await User.findOne({ studentId });
-      console.log("1. Found user:", {
-        exists: !!user,
-        userId: user?._id,
-        studentId
+      if (!user) throw new Error("Student ID not found");
+
+      // 2. Tìm các sự kiện mà checkInBy có quyền
+      const authorizedEvents = await Event.find({
+        $or: [
+          { createdBy: checkInBy },
+          { collaborators: checkInBy }
+        ],
+        status: 'active'
       });
 
-      if (!user) {
-        throw new Error("Student ID not found");
+      if (!authorizedEvents.length) {
+        throw new Error("You don't have permission to check-in any events");
       }
 
-      // 2. Tìm tất cả vé của user
-      const tickets = await Ticket.find({
-        buyerId: user._id,
-        status: 'booked',
-        paymentStatus: 'paid'
-      }).populate({
-        path: 'eventId',
-        match: { status: 'active' }
-      });
-
-      console.log("2. Found tickets:", {
-        count: tickets.length,
-        ticketIds: tickets.map(t => t._id.toString())
-      });
-
-      // 3. Lọc vé có event hợp lệ
-      const validTickets = tickets.filter(ticket => ticket.eventId);
-      
-      console.log("3. Valid tickets:", {
-        count: validTickets.length,
-        tickets: validTickets.map(t => ({
-          ticketId: t._id.toString(),
-          eventId: t.eventId._id.toString(),
-          eventName: t.eventId.name,
-          eventDate: t.eventId.date,
-          eventStatus: t.eventId.status
-        }))
-      });
+      // 3. Lọc các vé hợp lệ (có trong ticketsBought và thuộc sự kiện được phép check-in)
+      const validTickets = user.ticketsBought.filter(ticket => 
+        ticket.eventId && // Đảm bảo event tồn tại
+        authorizedEvents.some(event => 
+          event._id.toString() === ticket.eventId._id.toString()
+        )
+      );
 
       if (!validTickets.length) {
         throw new Error("No valid tickets found for this student ID");
       }
 
-      // 5. Tìm vé phù hợp với thời gian check-in
+      // 4. Tìm vé có thời gian sự kiện gần nhất
       let selectedTicket = null;
       let minTimeDiff = Infinity;
 
@@ -454,16 +444,6 @@ class TicketService {
         const eventTime = new Date(ticket.eventId.date);
         const timeDiff = Math.abs(eventTime - currentTime);
         const hoursDiff = timeDiff / (1000 * 60 * 60);
-
-        console.log("5. Checking ticket:", {
-          ticketId: ticket._id,
-          eventTime: eventTime.toISOString(),
-          eventTimeGMT7: new Date(eventTime.getTime() + GMT7_OFFSET).toISOString(),
-          currentTime: currentTime.toISOString(),
-          currentTimeGMT7: new Date(currentTime.getTime() + GMT7_OFFSET).toISOString(),
-          hoursDiff,
-          isWithinRange: hoursDiff <= 2
-        });
 
         if (hoursDiff <= 2 && timeDiff < minTimeDiff) {
           minTimeDiff = timeDiff;
