@@ -22,7 +22,7 @@ class RevenueService {
       const ticketMatch = {
         eventId: { $in: eventIds },
         isDeleted: false,
-        paymentStatus: 'paid',
+        //paymentStatus: 'paid',
       };
 
       if (startDate) {
