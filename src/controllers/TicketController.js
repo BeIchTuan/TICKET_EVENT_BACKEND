@@ -5,6 +5,7 @@ const Ticket = require("../models/TicketModel");
 const EmailService = require("../services/EmailService");
 const User = require("../models/UserModel");
 const notificationService = require("../services/NotificationService");
+const momoConfig = require("../config/MomoConfig");
 
 class TicketController {
   static async bookTicket(req, res) {
@@ -52,7 +53,7 @@ class TicketController {
 
       // Nếu không phải vé miễn phí, xử lý thanh toán như bình thường
       const orderInfo = `Thanh toán vé sự kiện: ${event.name}`;
-      const redirectUrl = `https://ticket-deeplink.vercel.app/ticket?detailId=${ticket._id}`;
+      const redirectUrl = `${momoConfig.REDIRECT_URL}?detailId=${ticket._id}`;
       const paymentResult = await MomoService.createPayment(
         event.price,
         orderInfo,
