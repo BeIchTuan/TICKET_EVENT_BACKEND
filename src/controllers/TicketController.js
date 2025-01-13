@@ -342,26 +342,28 @@ class TicketController {
       }
 
       // Format lại dữ liệu trước khi trả về
-      const formattedTickets = user.ticketsBought.map((ticket) => ({
-        _id: ticket._id,
-        bookingCode: ticket.bookingCode,
-        event: {
-          _id: ticket.eventId._id,
-          name: ticket.eventId.name,
-          date: ticket.eventId.date,
-          location: ticket.eventId.location,
-          price: ticket.eventId.price,
-          banner: ticket.eventId.banner,
-        },
-        status: ticket.status,
-        paymentStatus: ticket.paymentStatus,
-        checkInTime: ticket.checkInTime,
-        createAt: ticket.createdAt,
-        cancelReason: ticket.cancelReason,
-        paymentStatus: ticket.paymentStatus,
-        paymentData: ticket.paymentData,
-        //qrCode: ticket.qrCode,
-      }));
+      const formattedTickets = user.ticketsBought
+        .filter(ticket => ticket.eventId && ticket.eventId._id)
+        .map((ticket) => ({
+          _id: ticket._id,
+          bookingCode: ticket.bookingCode,
+          event: {
+        _id: ticket.eventId._id,
+        name: ticket.eventId.name,
+        date: ticket.eventId.date,
+        location: ticket.eventId.location,
+        price: ticket.eventId.price,
+        banner: ticket.eventId.banner,
+          },
+          status: ticket.status,
+          paymentStatus: ticket.paymentStatus,
+          checkInTime: ticket.checkInTime,
+          createAt: ticket.createdAt,
+          cancelReason: ticket.cancelReason,
+          paymentStatus: ticket.paymentStatus,
+          paymentData: ticket.paymentData,
+          //qrCode: ticket.qrCode,
+        }));
 
       res.status(200).json(formattedTickets);
     } catch (error) {
