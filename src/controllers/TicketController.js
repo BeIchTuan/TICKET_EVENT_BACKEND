@@ -5,6 +5,7 @@ const Ticket = require("../models/TicketModel");
 const EmailService = require("../services/EmailService");
 const User = require("../models/UserModel");
 const notificationService = require("../services/NotificationService");
+const momoConfig = require("../config/MomoConfig");
 
 class TicketController {
   static async bookTicket(req, res) {
@@ -52,7 +53,7 @@ class TicketController {
 
       // Nếu không phải vé miễn phí, xử lý thanh toán như bình thường
       const orderInfo = `Thanh toán vé sự kiện: ${event.name}`;
-      const redirectUrl = `https://ticket-deeplink.vercel.app/ticket?detailId=${ticket._id}`;
+      const redirectUrl = `${momoConfig.REDIRECT_URL}?detailId=${ticket._id}`;
       const paymentResult = await MomoService.createPayment(
         event.price,
         orderInfo,
@@ -342,26 +343,28 @@ class TicketController {
       }
 
       // Format lại dữ liệu trước khi trả về
-      const formattedTickets = user.ticketsBought.map((ticket) => ({
-        _id: ticket._id,
-        bookingCode: ticket.bookingCode,
-        event: {
-          _id: ticket.eventId._id,
-          name: ticket.eventId.name,
-          date: ticket.eventId.date,
-          location: ticket.eventId.location,
-          price: ticket.eventId.price,
-          banner: ticket.eventId.banner,
-        },
-        status: ticket.status,
-        paymentStatus: ticket.paymentStatus,
-        checkInTime: ticket.checkInTime,
-        createAt: ticket.createdAt,
-        cancelReason: ticket.cancelReason,
-        paymentStatus: ticket.paymentStatus,
-        paymentData: ticket.paymentData,
-        //qrCode: ticket.qrCode,
-      }));
+      const formattedTickets = user.ticketsBought
+        .filter(ticket => ticket.eventId && ticket.eventId._id)
+        .map((ticket) => ({
+          _id: ticket._id,
+          bookingCode: ticket.bookingCode,
+          event: {
+        _id: ticket.eventId._id,
+        name: ticket.eventId.name,
+        date: ticket.eventId.date,
+        location: ticket.eventId.location,
+        price: ticket.eventId.price,
+        banner: ticket.eventId.banner,
+          },
+          status: ticket.status,
+          paymentStatus: ticket.paymentStatus,
+          checkInTime: ticket.checkInTime,
+          createAt: ticket.createdAt,
+          cancelReason: ticket.cancelReason,
+          paymentStatus: ticket.paymentStatus,
+          paymentData: ticket.paymentData,
+          //qrCode: ticket.qrCode,
+        }));
 
       res.status(200).json(formattedTickets);
     } catch (error) {
