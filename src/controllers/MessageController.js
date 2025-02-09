@@ -1,5 +1,6 @@
 const MessageService = require("../services/MessageService");
 const ConversationService = require("../services/ConversationService");
+const analyzeSentiment = require("../middlewares/PredictText")
 
 class MessageController {
   static async sendMessage(req, res) {
@@ -11,6 +12,21 @@ class MessageController {
         return res
           .status(400)
           .json({ message: "Conversation ID and content are required." });
+      }
+
+      const sentiment = await analyzeSentiment(content);
+      if (!sentiment) {
+        return res
+          .status(500)
+          .json({ message: "Failed to analyze message sentiment." });
+      }
+
+      if (sentiment === "negative") {
+        return res
+          .status(400)
+          .json({
+            message: "Message contains negative sentiment and cannot be sent.",
+          });
       }
 
       // Verify the conversation exists
@@ -64,7 +80,6 @@ class MessageController {
     }
   }
 
-  // Xóa tin nhắn
   static async deleteMessage(req, res) {
     try {
       const { messageId } = req.params;
